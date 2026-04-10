@@ -83,7 +83,7 @@ t5 = t1 + t4;
 
 ---
 
-### #3 Declaração das Cédulas de Memória Usadas
+### #3 Declaração das Cédulas de Memória Usadas                                 FEITO
 
 Deverá declarar antes do código todas as cédulas de memória utilizadas.
 

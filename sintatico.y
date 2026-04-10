@@ -36,6 +36,10 @@ S 			: E
 								"#include <stdio.h>\n"
 								"int main(void) {\n";
 
+				for(int i=1; i<=var_temp_qnt; i++) {
+					codigo_gerado += "\tint t" + to_string(i) + ";\n";
+				}
+
 				codigo_gerado += $1.traducao;
 
 				codigo_gerado += "\treturn 0;"
