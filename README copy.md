@@ -61,7 +61,7 @@ t5 = t3 + t4;
 
 ---
 
-### #2 Expressão com os Demais Operadores Aritméticos
+### #2 Expressão com os Demais Operadores Aritméticos                           FEITO
 
 Fazer as demais operações aritméticas sobre inteiros funcionarem.
 
