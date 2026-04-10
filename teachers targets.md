@@ -113,7 +113,7 @@ t5 = t1 + t4;
 
 ---
 
-### #4 Desenvolvimento do Parênteses
+### #4 Desenvolvimento do Parênteses                                            FEITO
 
 Deverá permitir o uso de parênteses nas expressões.
 

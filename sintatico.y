@@ -22,6 +22,7 @@ string gentempcode();
 %}
 
 %token TK_NUM
+%token TK_LPAREN TK_RPAREN
 
 %start S
 
@@ -70,6 +71,11 @@ E 			: E '+' E
 				$$.label = gentempcode();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + 
 					" = " + $1.label + " / " + $3.label + ";\n";
+			}
+			| TK_LPAREN E TK_RPAREN
+			{
+				$$.label = $2.label;
+				$$.traducao = $2.traducao;
 			}
 			| TK_NUM
 			{
