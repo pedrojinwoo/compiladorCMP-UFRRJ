@@ -141,7 +141,7 @@ t5 = t3 * t4;
 
 ---
 
-### #5 Atribuição
+### #5 Atribuição                                                               FEITO
 
 Deverá permitir a atribuição a uma variável e sua utilização em expressões.
 

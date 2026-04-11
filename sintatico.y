@@ -23,15 +23,18 @@ string gentempcode();
 
 %token TK_NUM
 %token TK_LPAREN TK_RPAREN
+%token TK_ID
+%token TK_ASSIGN
 
 %start S
 
+%left TK_ASSIGN
 %left '+' '-'
 %left '*' '/'
 
 %%
 
-S 			: E
+S 			: CMDS
 			{
 				codigo_gerado = "/*Compilador FOCA*/\n"
 								"#include <stdio.h>\n"
@@ -48,7 +51,16 @@ S 			: E
 			}
 			;
 
-E 			: E '+' E
+CMDS 		: CMDS E
+			| E
+			;
+
+E 			: TK_ID TK_ASSIGN E
+			{
+				$$.label = $1.label;
+				$$.traducao = $3.traducao + "\t" + $$.label + " = " + $3.label + ";\n";
+			}
+			| E '+' E
 			{
 				$$.label = gentempcode();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label +
@@ -81,6 +93,11 @@ E 			: E '+' E
 			{
 				$$.label = gentempcode();
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
+			}
+			| TK_ID
+			{
+				$$.label = $1.label;
+				$$.traducao = "";
 			}
 			;
 
