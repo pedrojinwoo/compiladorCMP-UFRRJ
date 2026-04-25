@@ -28,7 +28,7 @@ string gentempcode();
 
 %start S
 
-%left TK_ASSIGN
+%right TK_ASSIGN
 %left '+' '-'
 %left '*' '/'
 
@@ -52,8 +52,14 @@ S 			: CMDS
 			;
 
 CMDS 		: CMDS E
-			| E
-			;
+				{
+					$$.traducao = $1.traducao + $2.traducao;
+				}
+				| E
+				{
+					$$.traducao = $1.traducao;
+				}
+				;
 
 E 			: TK_ID TK_ASSIGN E
 			{
@@ -96,8 +102,8 @@ E 			: TK_ID TK_ASSIGN E
 			}
 			| TK_ID
 			{
-				$$.label = $1.label;
-				$$.traducao = "";
+				$$.label = gentempcode();
+				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
 			}
 			;
 
