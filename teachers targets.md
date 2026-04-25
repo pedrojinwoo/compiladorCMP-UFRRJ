@@ -172,7 +172,7 @@ A = t5;
 
 ---
 
-### #6 Declaração
+### #6 Declaração                                                               FEITO *
 
 Deverá criar uma tabela de símbolos para representar as cédulas de memória alocadas pelo usuário. Esse é um exemplo de declaração explícita, mas outras variações de design são possíveis.
 

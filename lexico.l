@@ -5,12 +5,12 @@
 %option noyywrap
 
 ESPACO [ \t]
-DIGITO [0-9]
-CARACTERE [a-zA-Z_]
+DIGIT [0-9]
+CHARACTER [a-zA-Z_]
 
 DELIM {ESPACO}+
-NUM {DIGITO}+
-ID {CARACTERE}({CARACTERE}|{DIGITO})*
+NUM {DIGIT}+
+ID {CHARACTER}({CHARACTER}|{DIGIT})*
 %%
 
 "\n"		{ linha++; }
@@ -21,7 +21,10 @@ ID {CARACTERE}({CARACTERE}|{DIGITO})*
 
 "("                 { return TK_LPAREN; }
 ")"                 { return TK_RPAREN; }
-"="                 { return TK_ASSIGN; }"
+"="                 { return TK_ASSIGN; }
+";"                 { return TK_SEMICOLON; }
+
+"int"               { return TK_TYPE_INT; }
 
 {NUM}		{ yylval.label = yytext; return TK_NUM; }
 {ID}		{ yylval.label = yytext; return TK_ID; }
