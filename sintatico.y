@@ -37,15 +37,17 @@ attributes opCodeGenerator(string op, attributes left, attributes right);
 attributes litCodeGenerator(string type, string value);
 %}
 
-%token TK_ID
-%token TK_NUM_INT TK_NUM_FLOAT TK_CHAR TK_BOOL
+%token TK_SEMICOLON
+%token TK_ID TK_NUM_INT TK_NUM_FLOAT TK_CHAR TK_BOOL
 %token TK_LPAREN TK_RPAREN
-%token TK_ASSIGN TK_SEMICOLON
+%token TK_ASSIGN TK_EQ TK_NEQ TK_LT TK_GT TK_LEQ TK_GEQ
 %token TK_TYPE_INT TK_TYPE_FLOAT TK_TYPE_CHAR TK_TYPE_BOOL
 
 %start S
 
 %right TK_ASSIGN
+%left TK_EQ TK_NEQ 
+%left TK_LT TK_GT TK_LEQ TK_GEQ
 %left '+' '-'
 %left '*' '/'
 
@@ -161,6 +163,30 @@ E								: E '+' E
 									$$.type = symbol_table[$1.label].type;
 									$$.traducao = "";
 								}
+								| E TK_EQ E
+								{
+									$$ = opCodeGenerator("==", $1, $3);
+								}
+								| E TK_NEQ E
+								{
+									$$ = opCodeGenerator("!=", $1, $3);
+								}
+								| E TK_LT E
+								{
+									$$ = opCodeGenerator("<", $1, $3);
+								}
+								| E TK_GT E
+								{
+									$$ = opCodeGenerator(">", $1, $3);
+								}
+								| E TK_LEQ E
+								{
+									$$ = opCodeGenerator("<=", $1, $3);
+								}
+								| E TK_GEQ E
+								{
+									$$ = opCodeGenerator(">=", $1, $3);
+								}
 								;
 
 %%
@@ -178,6 +204,7 @@ string gentempcode(string type)
 }
 string resultType(string t1, string t2)
 {
+	if(t1 == "error" || t2 == "error") return "error";
 	if(t1 == "char" || t2 == "char") return "error";
 	if(t1 == "float" || t2 == "float") return "float";
 	return "int";

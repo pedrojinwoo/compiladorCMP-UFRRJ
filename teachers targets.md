@@ -260,7 +260,7 @@ t2 = 1;
 
 ---
 
-### #9 Operadores Relacionais
+### #9 Operadores Relacionais                                                   FEITO
 
 Permitir expressões com operadores relacionais (`<`, `<=`, `>`, `>=`, `==`, `!=`). O resultado da operação deve ser tratado como valor lógico.
 

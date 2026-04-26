@@ -23,7 +23,15 @@ CHAR                {"'"{CHARACTER}"'"}
 
 "("                 { return TK_LPAREN; }
 ")"                 { return TK_RPAREN; }
+
 "="                 { return TK_ASSIGN; }
+"=="                { return TK_EQ; }
+"!="                { return TK_NEQ; }
+"<"                 { return TK_LT; }
+">"                 { return TK_GT; }
+"<="                { return TK_LEQ; }
+">="                { return TK_GEQ; }
+
 ";"                 { return TK_SEMICOLON; }
 
 "int"               { return TK_TYPE_INT; }
