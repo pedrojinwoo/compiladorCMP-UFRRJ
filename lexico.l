@@ -29,11 +29,14 @@ CHAR                {"'"{CHARACTER}"'"}
 "int"               { return TK_TYPE_INT; }
 "float"             { return TK_TYPE_FLOAT; }
 "char"              { return TK_TYPE_CHAR; }
+"bool"              { return TK_TYPE_BOOL; }
 
 {NUM_INT}		        { yylval.label = yytext; return TK_NUM_INT; }
 {NUM_FLOAT}	        { yylval.label = yytext; return TK_NUM_FLOAT; }
 {ID}		            { yylval.label = yytext; return TK_ID; }
-{CHAR}	            { yylval.label = yytext; return TK_CHAR; }
+{CHAR}	            { yylval.label = yytext.substr(1, yytext.length() - 2); return TK_CHAR; }
+"true"              { yylval.label = "1"; return TK_BOOL; }
+"false"             { yylval.label = "0"; return TK_BOOL; }
 
 .			{ fprintf(stderr, "Caractere nao reconhecido na linha %d: %s\n", linha, yytext); }
 

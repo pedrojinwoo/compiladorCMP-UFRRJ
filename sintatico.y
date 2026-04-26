@@ -38,10 +38,10 @@ attributes litCodeGenerator(string type, string value);
 %}
 
 %token TK_ID
-%token TK_NUM_INT TK_NUM_FLOAT TK_CHAR
+%token TK_NUM_INT TK_NUM_FLOAT TK_CHAR TK_BOOL
 %token TK_LPAREN TK_RPAREN
 %token TK_ASSIGN TK_SEMICOLON
-%token TK_TYPE_INT TK_TYPE_FLOAT TK_TYPE_CHAR
+%token TK_TYPE_INT TK_TYPE_FLOAT TK_TYPE_CHAR TK_TYPE_BOOL
 
 %start S
 
@@ -101,6 +101,10 @@ DECLARATION			: TK_TYPE_INT TK_ID TK_SEMICOLON
 								{
 									$$.traducao = varDeclaration($2.label, "char");
 								}
+								| TK_TYPE_BOOL TK_ID TK_SEMICOLON
+								{
+									$$.traducao = varDeclaration($2.label, "int");
+								}
 								;
 
 ASSIGNMENT			: TK_ID TK_ASSIGN E TK_SEMICOLON
@@ -147,9 +151,15 @@ E								: E '+' E
 								{
 									$$ = litCodeGenerator("char", $1.label);
 								}
+								| TK_BOOL
+								{
+									$$ = litCodeGenerator("int", $1.label);
+								}
 								| TK_ID
 								{
-									$$ = litCodeGenerator(symbol_table[$1.label].type, symbol_table[$1.label].alias);
+									$$.label = symbol_table[$1.label].alias;
+									$$.type = symbol_table[$1.label].type;
+									$$.traducao = "";
 								}
 								;
 

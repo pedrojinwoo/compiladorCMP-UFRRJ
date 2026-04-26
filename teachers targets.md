@@ -203,7 +203,7 @@ t1 = t5;
 
 ---
 
-### #7 Tipo Float                                                               FEITO *
+### #7 Tipo Float                                                               FEITO
 
 Deverá ser possível utilizar o tipo `float`. Para isso, será necessário alterar a tabela de símbolos para armazenar o tipo da variável. Além disso, será preciso carregar o tipo resultante entre os nós da expressão.
 
@@ -232,7 +232,7 @@ t1 = t5;                t1 = t5;
 
 ---
 
-### #8 Tipos char e boolean
+### #8 Tipos char e boolean                                                     FEITO
 
 Deverá ser possível declarar e utilizar variáveis dos tipos `char` e `boolean`.
 
