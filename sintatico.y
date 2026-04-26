@@ -32,13 +32,14 @@ int yylex(void);
 void yyerror(string);
 string gentempcode(string type);
 string resultType(string t1, string t2);
+string varDeclaration(string name, string type);
 %}
 
 %token TK_ID
-%token TK_NUM_INT TK_NUM_FLOAT
+%token TK_NUM_INT TK_NUM_FLOAT TK_CHAR
 %token TK_LPAREN TK_RPAREN
 %token TK_ASSIGN TK_SEMICOLON
-%token TK_TYPE_INT TK_TYPE_FLOAT
+%token TK_TYPE_INT TK_TYPE_FLOAT TK_TYPE_CHAR
 
 %start S
 
@@ -88,24 +89,16 @@ CMD							: DECLARATION
 
 DECLARATION			: TK_TYPE_INT TK_ID TK_SEMICOLON
 								{
-									if(symbol_table.count($2.label)) {
-										yyerror("Erro: Variável '" + $2.label + " já declarada!");
-									} else {
-										string t = gentempcode("int");
-										symbol_table[$2.label] = {$2.label, t, "int"};
-										$$.traducao = "\tint " + t + ";\n";
-									}
+									$$.traducao = varDeclaration($2.label, "int");
 								}
 								| TK_TYPE_FLOAT TK_ID TK_SEMICOLON
 								{
-									if(symbol_table.count($2.label)) {
-										yyerror("Erro: Variável '" + $2.label + " já declarada!");
-									} else {
-										string t = gentempcode("float");
-										symbol_table[$2.label] = {$2.label, t, "float"};
-										$$.traducao = "\tfloat " + t + ";\n";
-									}
-								}	
+									$$.traducao = varDeclaration($2.label, "float");
+								}
+								| TK_TYPE_CHAR TK_ID TK_SEMICOLON
+								{
+									$$.traducao = varDeclaration($2.label, "char");
+								}
 								;
 
 ASSIGNMENT			: TK_ID TK_ASSIGN E TK_SEMICOLON
@@ -151,11 +144,19 @@ E								: E '+' E
 								| TK_NUM_INT
 								{
 									$$.label = gentempcode("int");
+									$$.type = "int";
 									$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
 								}
 								| TK_NUM_FLOAT
 								{
 									$$.label = gentempcode("float");
+									$$.type = "float";
+									$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
+								}
+								| TK_CHAR
+								{
+									$$.label = gentempcode("char");
+									$$.type = "char";
 									$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
 								}
 								| TK_ID
@@ -181,8 +182,20 @@ string gentempcode(string type)
 }
 string resultType(string t1, string t2)
 {
+	if(t1 == "char" || t2 == "char") return "error";
 	if(t1 == "float" || t2 == "float") return "float";
 	return "int";
+}
+string varDeclaration(string name, string type)
+{
+	if(symbol_table.count(name)) {
+		yyerror("Erro: Variável '" + name + " já declarada!");
+		return "";
+	} else {
+		string t = gentempcode(type);
+		symbol_table[name] = {name, t, type};
+		return "\t" + type + " " + t + ";\n";
+	}
 }
 
 int main(int argc, char* argv[])
