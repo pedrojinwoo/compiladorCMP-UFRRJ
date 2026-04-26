@@ -172,7 +172,7 @@ A = t5;
 
 ---
 
-### #6 Declaração                                                               FEITO *
+### #6 Declaração                                                               FEITO
 
 Deverá criar uma tabela de símbolos para representar as cédulas de memória alocadas pelo usuário. Esse é um exemplo de declaração explícita, mas outras variações de design são possíveis.
 
@@ -203,7 +203,7 @@ t1 = t5;
 
 ---
 
-### #7 Tipo Float
+### #7 Tipo Float                                                               FEITO *
 
 Deverá ser possível utilizar o tipo `float`. Para isso, será necessário alterar a tabela de símbolos para armazenar o tipo da variável. Além disso, será preciso carregar o tipo resultante entre os nós da expressão.
 
@@ -214,18 +214,18 @@ A = (A + 2) * 3.0
 ```
 
 **Código Intermediário:**
-```c
-int t1;
-int t2;
-int t3;
-float t4;
-int t5;
+```c                    meu código
+int t1;                 int t1;
+int t2;                 int t2;
+int t3;                 int t3;
+float t4;               float t4;
+int t5;                 float t5;
 
-t2 = 2;
-t3 = t1 + t2;
-t4 = 3.0;
-t5 = t4 * t3;
-t1 = t5;
+t2 = 2;                 t2 = 2;
+t3 = t1 + t2;           t3 = t1 + t2;
+t4 = 3.0;               t4 = 3.0;
+t5 = t4 * t3;           t5 = t4 * t3;
+t1 = t5;                t1 = t5;
 ```
 
 **Teste:** `make test-07`
