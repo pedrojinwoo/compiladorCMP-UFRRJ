@@ -33,6 +33,8 @@ void yyerror(string);
 string gentempcode(string type);
 string resultType(string t1, string t2);
 string varDeclaration(string name, string type);
+attributes opCodeGenerator(string op, attributes left, attributes right);
+attributes litCodeGenerator(string type, string value);
 %}
 
 %token TK_ID
@@ -114,27 +116,19 @@ ASSIGNMENT			: TK_ID TK_ASSIGN E TK_SEMICOLON
 
 E								: E '+' E
 								{
-									$$.label = gentempcode(resultType($1.type, $3.type));
-									$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label +
-										" = " + $1.label + " + " + $3.label + ";\n";
+									$$ = opCodeGenerator("+", $1, $3);
 								}
 								|	E '-' E
 								{
-									$$.label = gentempcode(resultType($1.type, $3.type));
-									$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label +
-										" = " + $1.label + " - " + $3.label + ";\n";
+									$$ = opCodeGenerator("-", $1, $3);
 								}
 								| E '*' E
 								{
-									$$.label = gentempcode(resultType($1.type, $3.type));
-									$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + 
-										" = " + $1.label + " * " + $3.label + ";\n";
+									$$ = opCodeGenerator("*", $1, $3);
 								}
 								| E '/' E
 								{
-									$$.label = gentempcode(resultType($1.type, $3.type));
-									$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + 
-										" = " + $1.label + " / " + $3.label + ";\n";
+									$$ = opCodeGenerator("/", $1, $3);
 								}
 								| TK_LPAREN E TK_RPAREN
 								{
@@ -143,27 +137,19 @@ E								: E '+' E
 								}
 								| TK_NUM_INT
 								{
-									$$.label = gentempcode("int");
-									$$.type = "int";
-									$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
+									$$ = litCodeGenerator("int", $1.label);
 								}
 								| TK_NUM_FLOAT
 								{
-									$$.label = gentempcode("float");
-									$$.type = "float";
-									$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
+									$$ = litCodeGenerator("float", $1.label);
 								}
 								| TK_CHAR
 								{
-									$$.label = gentempcode("char");
-									$$.type = "char";
-									$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
+									$$ = litCodeGenerator("char", $1.label);
 								}
 								| TK_ID
 								{
-									$$.label = symbol_table[$1.label].alias;
-									$$.type = symbol_table[$1.label].type;
-									$$.traducao = "";
+									$$ = litCodeGenerator(symbol_table[$1.label].type, symbol_table[$1.label].alias);
 								}
 								;
 
@@ -196,6 +182,33 @@ string varDeclaration(string name, string type)
 		symbol_table[name] = {name, t, type};
 		return "\t" + type + " " + t + ";\n";
 	}
+}
+attributes opCodeGenerator(string op, attributes left, attributes right)
+{
+	attributes r;
+	
+	string result_type = resultType(left.type, right.type);
+	if(result_type == "error") {
+		yyerror("Erro: Operação inválida entre tipos '" + left.type + "' e '" + right.type + "'!");
+		r.label = "";
+		r.type = "";
+		r.traducao = "";
+		return r;
+	} else {
+		r.label = gentempcode(result_type);
+		r.type = result_type;
+		r.traducao = left.traducao + right.traducao + "\t" + r.label + " = " + left.label + 
+								 " " + op + " " + right.label + ";\n";
+		return r;
+	}
+}
+attributes litCodeGenerator(string type, string value)
+{
+	attributes r;
+	r.label = gentempcode(type);
+	r.type = type;
+	r.traducao = "\t" + r.label + " = " + value + ";\n";
+	return r;
 }
 
 int main(int argc, char* argv[])
