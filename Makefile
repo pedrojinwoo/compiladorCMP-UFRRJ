@@ -1,22 +1,45 @@
 SCANNER := flex
 SCANNER_PARAMS := lexico.l
 PARSER := bison
-PARSER_PARAMS := -d --yacc sintatico.y
+# PARSER_PARAMS := -d --yacc sintatico.y
+PARSER_PARAMS := -d --yacc
 CXXFLAGS := -Wno-free-nonheap-object
-FILE := exemplos/01_soma.foca
+# FILE := exemplos/01_soma.foca
+FILE := testeGeral.foca
 
-all: glf translate
+# all: glf translate
+all: modular
 
 compile: glf
 
-glf: y.tab.c lex.yy.c
-		g++ $(CXXFLAGS) -o glf y.tab.c
+#glf: y.tab.c lex.yy.c
+#		g++ $(CXXFLAGS) -o glf y.tab.c
+#
+#lex.yy.c: lexico.l
+#		$(SCANNER) $(SCANNER_PARAMS)
+#
+#y.tab.c y.tab.h: sintatico.y
+#		$(PARSER) $(PARSER_PARAMS)
 
+# POR ARQUITETURA MODULAR
+modular: y.tab.c lex.yy.c actions.cpp
+		g++ $(CXXFLAGS) -o glf y_modular.tab.c actions.cpp
+
+y_modular.tab.c: parser.y
+		$(PARSER) $(PARSER_PARAMS) -b y_modular parser.y
+
+
+# POR ARQUITETURA ANTIGA
+antigo: lex.yy.c y_antigo.tab.c
+	g++ $(CXXFLAGS) -o glf y_antigo.tab.c
+
+y_antigo.tab.c: sintatico.y
+	$(PARSER) $(PARSER_PARAMS) -b y_antigo sintatico.
+
+
+# REGRAS GERAIS
 lex.yy.c: lexico.l
 		$(SCANNER) $(SCANNER_PARAMS)
-
-y.tab.c y.tab.h: sintatico.y
-		$(PARSER) $(PARSER_PARAMS)
 
 translate: glf
 		./glf < $(FILE)
