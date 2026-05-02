@@ -64,6 +64,8 @@ S 							: CMDS
 										codigo_gerado += "\t" + alias_types[t] + " " + t + ";\n";
 									}
 
+									codigo_gerado += "\n";
+
 									codigo_gerado += $1.traducao;
 
 									codigo_gerado += "\treturn 0;"
