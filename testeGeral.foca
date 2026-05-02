@@ -1,6 +1,7 @@
-char A;
-A = 'b';
-bool B;
-B = true;
-float C;
-C = (D + 15) * 5.0;
+float F;
+int I;
+int A;
+char C;
+F = I + 2.5;
+I + A;
+A + C;

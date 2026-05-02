@@ -34,7 +34,9 @@ string gentempcode(string type);
 string resultType(string t1, string t2);
 void varDeclaration(string name, string type);
 attributes opCodeGenerator(string op, attributes left, attributes right);
+attributes unopCodeGenerator(string op, attributes right);
 attributes litCodeGenerator(string type, string value);
+attributes IDVerifier(string name);
 %}
 
 %token TK_SEMICOLON
@@ -42,14 +44,17 @@ attributes litCodeGenerator(string type, string value);
 %token TK_LPAREN TK_RPAREN
 %token TK_ASSIGN TK_EQ TK_NEQ TK_LT TK_GT TK_LEQ TK_GEQ
 %token TK_TYPE_INT TK_TYPE_FLOAT TK_TYPE_CHAR TK_TYPE_BOOL
+%token TK_AND TK_OR TK_NOT
 
 %start S
 
 %right TK_ASSIGN
+%left TK_AND TK_OR
 %left TK_EQ TK_NEQ 
 %left TK_LT TK_GT TK_LEQ TK_GEQ
 %left '+' '-'
 %left '*' '/'
+%right TK_NOT
 
 %%
 
@@ -88,6 +93,10 @@ CMD							: DECLARATION
 									$$.traducao = $1.traducao;
 								}
 								| ASSIGNMENT
+								{
+									$$.traducao = $1.traducao;
+								}
+								| E TK_SEMICOLON
 								{
 									$$.traducao = $1.traducao;
 								}
@@ -165,9 +174,7 @@ E								: E '+' E
 								}
 								| TK_ID
 								{
-									$$.label = gentempcode("int");
-									$$.type = "int";
-									$$.traducao = "";
+									$$ = IDVerifier($1.label);
 								}
 								| E TK_EQ E
 								{
@@ -192,6 +199,18 @@ E								: E '+' E
 								| E TK_GEQ E
 								{
 									$$ = opCodeGenerator(">=", $1, $3);
+								}
+								| E TK_AND E
+								{
+									$$ = opCodeGenerator("&&", $1, $3);
+								}
+								| E TK_OR E
+								{
+									$$ = opCodeGenerator("||", $1, $3);
+								}
+								| TK_NOT E
+								{
+									$$ = unopCodeGenerator("!", $2);
 								}
 								;
 
@@ -224,15 +243,14 @@ void varDeclaration(string name, string type)
 		symbol_table[name] = {name, t, type};
 	}
 }
-attributes opCodeGenerator(string op, attributes left, attributes right)
+/*attributes opCodeGenerator(string op, attributes left, attributes right)
 {
 	attributes r;
-	
 	string result_type = resultType(left.type, right.type);
 	if(result_type == "error") {
 		yyerror("Erro: Operação inválida entre tipos '" + left.type + "' e '" + right.type + "'!");
 		r.label = "";
-		r.type = "";
+		r.type = "error";
 		r.traducao = "";
 		return r;
 	} else {
@@ -242,6 +260,45 @@ attributes opCodeGenerator(string op, attributes left, attributes right)
 								 " " + op + " " + right.label + ";\n";
 		return r;
 	}
+}*/
+attributes opCodeGenerator(string op, attributes left, attributes right)
+{
+	attributes r;
+	string opType = resultType(left.type, right.type);
+	if(opType == "error") {
+		yyerror("Erro: Tipos Incompatíveis");
+		r.label = "";
+		r.type = "error";
+		r.traducao = "";
+		return r;
+	}
+	string accumulatedTransl = left.traducao + right.traducao;
+	string leftLabel = left.label;
+	string rightLabel = right.label;
+	if(opType == "float") {
+		if(left.type == "int") {
+			string t_conv = gentempcode("float");
+			accumulatedTransl += "\t" + t_conv + " = (float) " + left.label + ";\n";
+			leftLabel = t_conv;
+		}
+		if(right.type == "int") {
+			string t_conv = gentempcode("float");
+			accumulatedTransl += "\t" + t_conv + " = (float) " + right.label + ";\n";
+			rightLabel = t_conv;
+		}
+	}
+	r.label = gentempcode(opType);
+	r.type = opType;
+	r.traducao = accumulatedTransl + "\t" + r.label + " = " + leftLabel + " " + op + " " + rightLabel + ";\n";
+	return r;
+}
+attributes unopCodeGenerator(string op, attributes right)
+{
+	attributes r;
+	r.label = gentempcode("int");
+	r.type = "int";
+	r.traducao = right.traducao + "\t" + r.label + " = " + op + right.label + ";\n";
+	return r;
 }
 attributes litCodeGenerator(string type, string value)
 {
@@ -249,6 +306,21 @@ attributes litCodeGenerator(string type, string value)
 	r.label = gentempcode(type);
 	r.type = type;
 	r.traducao = "\t" + r.label + " = " + value + ";\n";
+	return r;
+}
+attributes IDVerifier(string name)
+{
+	attributes r;
+	if(symbol_table.count(name)) {
+		r.label = symbol_table[name].alias;
+		r.type = symbol_table[name].type;
+		r.traducao = "";
+	} else {
+		yyerror("Erro: Variável '" + name + "' não foi declarada!");
+		r.label = "";
+		r.type = "error";
+		r.traducao = "";
+	}
 	return r;
 }
 

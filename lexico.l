@@ -31,6 +31,9 @@ CHAR                \'{CHARACTER}\'
 ">"                 { return TK_GT; }
 "<="                { return TK_LEQ; }
 ">="                { return TK_GEQ; }
+"&&"                { return TK_AND; }
+"||"                { return TK_OR; }
+"!"                 { return TK_NOT; }
 
 ";"                 { return TK_SEMICOLON; }
 

@@ -287,7 +287,7 @@ t4 = t3;
 
 ---
 
-### #10 Operadores Lógicos
+### #10 Operadores Lógicos                                                      FEITO
 
 Implementar os operadores lógicos `&&`, `||` e `!`. Deve-se verificar a compatibilidade de tipos nas expressões lógicas.
 
@@ -316,7 +316,7 @@ t5 = t4;
 
 ---
 
-### #11 Conversão Implícita
+### #11 Conversão Implícita                                                     FEITO
 
 Deverá ocorrer a conversão automática de `int` para `float` em expressões mistas. Essa conversão deve ser aplicada na geração do código intermediário. Será necessário criar uma tabela de conversão para determinar os tipos resultantes. Estratégias como as usadas em Ada não serão aceitas.
 
