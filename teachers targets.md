@@ -347,7 +347,7 @@ t5 = t4;
 
 ---
 
-### #12 Conversão Explícita
+### #12 Conversão Explícita                                                     FEITO
 
 Permitir expressões com casting explícito. A conversão deverá ser aplicada diretamente no código intermediário.
 

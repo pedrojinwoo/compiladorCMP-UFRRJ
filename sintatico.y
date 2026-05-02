@@ -37,6 +37,7 @@ attributes opCodeGenerator(string op, attributes left, attributes right);
 attributes unopCodeGenerator(string op, attributes right);
 attributes litCodeGenerator(string type, string value);
 attributes IDVerifier(string name);
+attributes castCodeGenerator(string tType, attributes right);
 %}
 
 %token TK_SEMICOLON
@@ -45,6 +46,7 @@ attributes IDVerifier(string name);
 %token TK_ASSIGN TK_EQ TK_NEQ TK_LT TK_GT TK_LEQ TK_GEQ
 %token TK_TYPE_INT TK_TYPE_FLOAT TK_TYPE_CHAR TK_TYPE_BOOL
 %token TK_AND TK_OR TK_NOT
+%nonassoc CAST_PREC
 
 %start S
 
@@ -126,11 +128,21 @@ DECLARATION			: TK_TYPE_INT TK_ID TK_SEMICOLON
 
 ASSIGNMENT			: TK_ID TK_ASSIGN E TK_SEMICOLON
 								{
-									if(!symbol_table.count($1.label)) {
+									/*if(!symbol_table.count($1.label)) {
 										yyerror("Erro: Variável '" + $1.label + " não declarada!");
 									} else {
 										string d = symbol_table[$1.label].alias;
 										$$.traducao = $3.traducao + "\t" + d + " = " + $3.label + ";\n";
+									}*/
+									if($3.type != "error") {
+										if(!symbol_table.count($1.label)) {
+											yyerror("Erro: Variável '" + $1.label + " não declarada!");
+										} else {
+											string d = symbol_table[$1.label].alias;
+											$$.traducao = $3.traducao + "\t" + d + " = " + $3.label + ";\n";
+										}
+									} else {
+										$$.traducao = $3.traducao;
 									}
 								}
 								;
@@ -212,6 +224,22 @@ E								: E '+' E
 								{
 									$$ = unopCodeGenerator("!", $2);
 								}
+								| TK_LPAREN TK_TYPE_INT TK_RPAREN E %prec CAST_PREC
+								{
+									$$ = castCodeGenerator("int", $4);
+								}
+								| TK_LPAREN TK_TYPE_FLOAT TK_RPAREN E %prec CAST_PREC
+								{
+									$$ = castCodeGenerator("float", $4);
+								}
+								| TK_LPAREN TK_TYPE_CHAR TK_RPAREN E %prec CAST_PREC
+								{
+									$$ = castCodeGenerator("char", $4);
+								}
+								| TK_LPAREN TK_TYPE_BOOL TK_RPAREN E %prec CAST_PREC
+								{
+									$$ = castCodeGenerator("int", $4);
+								}
 								;
 
 %%
@@ -243,24 +271,6 @@ void varDeclaration(string name, string type)
 		symbol_table[name] = {name, t, type};
 	}
 }
-/*attributes opCodeGenerator(string op, attributes left, attributes right)
-{
-	attributes r;
-	string result_type = resultType(left.type, right.type);
-	if(result_type == "error") {
-		yyerror("Erro: Operação inválida entre tipos '" + left.type + "' e '" + right.type + "'!");
-		r.label = "";
-		r.type = "error";
-		r.traducao = "";
-		return r;
-	} else {
-		r.label = gentempcode(result_type);
-		r.type = result_type;
-		r.traducao = left.traducao + right.traducao + "\t" + r.label + " = " + left.label + 
-								 " " + op + " " + right.label + ";\n";
-		return r;
-	}
-}*/
 attributes opCodeGenerator(string op, attributes left, attributes right)
 {
 	attributes r;
@@ -322,6 +332,40 @@ attributes IDVerifier(string name)
 		r.traducao = "";
 	}
 	return r;
+}
+attributes castCodeGenerator(string tType, attributes right)
+{
+	attributes r;
+	if(right.type == "error") {
+		r.label = "";
+		r.type = "error";
+		r.traducao = "";
+		return r;
+	}
+	bool error = false;
+	if (tType == "char") {
+        if (right.type != "char") error = true;
+    } 
+    else if (tType == "bool") {
+        if (right.type != "int" && right.type != "bool") error = true;
+    }
+    else if (tType == "int") {
+        if (right.type == "char") error = true;
+    }
+    if (error) {
+		yyerror("Erro Semântico: Conversão ilegal de '" + right.type + "' para '" + tType + "'");
+		r.label = "";
+        r.type = "error";
+        r.traducao = "";
+        return r;
+    }
+    if (right.type == tType) {
+		return right;
+	}
+    r.label = gentempcode(tType);
+    r.type = tType;
+    r.traducao = right.traducao + "\t" + r.label + " = (" + tType + ") " + right.label + ";\n";
+    return r;
 }
 
 int main(int argc, char* argv[])
