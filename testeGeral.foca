@@ -1,0 +1,6 @@
+char A;
+A = 'b';
+bool B;
+B = true;
+float C;
+C = (D + 15) * 5.0;

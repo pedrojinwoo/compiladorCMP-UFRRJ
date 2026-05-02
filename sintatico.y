@@ -32,7 +32,7 @@ int yylex(void);
 void yyerror(string);
 string gentempcode(string type);
 string resultType(string t1, string t2);
-string varDeclaration(string name, string type);
+void varDeclaration(string name, string type);
 attributes opCodeGenerator(string op, attributes left, attributes right);
 attributes litCodeGenerator(string type, string value);
 %}
@@ -93,19 +93,23 @@ CMD							: DECLARATION
 
 DECLARATION			: TK_TYPE_INT TK_ID TK_SEMICOLON
 								{
-									$$.traducao = varDeclaration($2.label, "int");
+									varDeclaration($2.label, "int");
+									$$.traducao = "";
 								}
 								| TK_TYPE_FLOAT TK_ID TK_SEMICOLON
 								{
-									$$.traducao = varDeclaration($2.label, "float");
+									varDeclaration($2.label, "float");
+									$$.traducao = "";
 								}
 								| TK_TYPE_CHAR TK_ID TK_SEMICOLON
 								{
-									$$.traducao = varDeclaration($2.label, "char");
+									varDeclaration($2.label, "char");
+									$$.traducao = "";
 								}
 								| TK_TYPE_BOOL TK_ID TK_SEMICOLON
 								{
-									$$.traducao = varDeclaration($2.label, "int");
+									varDeclaration($2.label, "int");
+									$$.traducao = "";
 								}
 								;
 
@@ -159,8 +163,8 @@ E								: E '+' E
 								}
 								| TK_ID
 								{
-									$$.label = symbol_table[$1.label].alias;
-									$$.type = symbol_table[$1.label].type;
+									$$.label = gentempcode("int");
+									$$.type = "int";
 									$$.traducao = "";
 								}
 								| E TK_EQ E
@@ -209,15 +213,13 @@ string resultType(string t1, string t2)
 	if(t1 == "float" || t2 == "float") return "float";
 	return "int";
 }
-string varDeclaration(string name, string type)
+void varDeclaration(string name, string type)
 {
 	if(symbol_table.count(name)) {
 		yyerror("Erro: Variável '" + name + " já declarada!");
-		return "";
 	} else {
 		string t = gentempcode(type);
 		symbol_table[name] = {name, t, type};
-		return "\t" + type + " " + t + ";\n";
 	}
 }
 attributes opCodeGenerator(string op, attributes left, attributes right)
