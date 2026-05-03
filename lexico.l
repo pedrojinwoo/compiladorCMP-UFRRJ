@@ -7,11 +7,12 @@
 ESPACO [ \t]
 DIGIT [0-9]
 CHARACTER [a-zA-Z_]
+IDSTART [a-zA-Z]
 
 DELIM               {ESPACO}+
 NUM_INT             {DIGIT}+
 NUM_FLOAT           {DIGIT}+"."{DIGIT}+
-ID                  {CHARACTER}({CHARACTER}|{DIGIT})*
+ID                  {IDSTART}({CHARACTER}|{DIGIT})*
 CHAR                \'{CHARACTER}\'
 %%
 
@@ -54,6 +55,6 @@ CHAR                \'{CHARACTER}\'
                     }
 
 
-.			{ fprintf(stderr, "Caractere nao reconhecido na linha %d: %s\n", linha, yytext); }
+.			{ fprintf(stderr, "Erro Léxico: Caractere nao reconhecido na linha %d: %s\n", linha, yytext); }
 
 %%

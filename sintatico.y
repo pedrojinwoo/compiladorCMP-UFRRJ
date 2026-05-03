@@ -30,7 +30,7 @@ map<string, string> alias_types;
 
 int yylex(void);
 void yyerror(string);
-string gentempcode(string type);
+string genAlias(string type);
 string resultType(string t1, string t2);
 void varDeclaration(string name, string type);
 attributes opCodeGenerator(string op, attributes left, attributes right);
@@ -38,6 +38,7 @@ attributes unopCodeGenerator(string op, attributes right);
 attributes litCodeGenerator(string type, string value);
 attributes IDVerifier(string name);
 attributes castCodeGenerator(string tType, attributes right);
+attributes logicRelCodeGenerator(string op, attributes left, attributes right);
 %}
 
 %token TK_SEMICOLON
@@ -62,12 +63,12 @@ attributes castCodeGenerator(string tType, attributes right);
 
 S 							: CMDS
 								{
-									codigo_gerado = "/*Compilador FOCA*/\n"
+									codigo_gerado = "/*Compilador VIPERIDAE*/\n"
 													"#include <stdio.h>\n"
 													"int main(void) {\n";
 
 									for(int i=1; i<=var_temp_qnt; i++) {
-										string t = "t" + to_string(i);
+										string t = "_t" + to_string(i);
 										codigo_gerado += "\t" + alias_types[t] + " " + t + ";\n";
 									}
 
@@ -121,28 +122,27 @@ DECLARATION			: TK_TYPE_INT TK_ID TK_SEMICOLON
 								}
 								| TK_TYPE_BOOL TK_ID TK_SEMICOLON
 								{
-									varDeclaration($2.label, "int");
+									varDeclaration($2.label, "bool");
 									$$.traducao = "";
 								}
 								;
 
 ASSIGNMENT			: TK_ID TK_ASSIGN E TK_SEMICOLON
 								{
-									/*if(!symbol_table.count($1.label)) {
-										yyerror("Erro: Variável '" + $1.label + " não declarada!");
+									if(!symbol_table.count($1.label)) {
+										yyerror("Erro Semantico: Variavel '" + $1.label + "' nao declarada!");
+        								$$.traducao = "";
 									} else {
-										string d = symbol_table[$1.label].alias;
-										$$.traducao = $3.traducao + "\t" + d + " = " + $3.label + ";\n";
-									}*/
-									if($3.type != "error") {
-										if(!symbol_table.count($1.label)) {
-											yyerror("Erro: Variável '" + $1.label + " não declarada!");
+										if($3.type != "error") {
+											if(symbol_table[$1.label].type == $3.type) {
+												$$.traducao = $3.traducao + "\t" + symbol_table[$1.label].alias + " = " + $3.label + ";\n";
+											} else {
+												yyerror("Erro Semantico: Tipos incompativeis! '" + $1.label + "' e " + symbol_table[$1.label].type + " mas recebeu " + $3.type);
+												$$.traducao = $3.traducao;
+											}
 										} else {
-											string d = symbol_table[$1.label].alias;
-											$$.traducao = $3.traducao + "\t" + d + " = " + $3.label + ";\n";
+											$$.traducao = $3.traducao;
 										}
-									} else {
-										$$.traducao = $3.traducao;
 									}
 								}
 								;
@@ -167,6 +167,7 @@ E								: E '+' E
 								{
 									$$.label = $2.label;
 									$$.traducao = $2.traducao;
+									$$.type = $2.type;
 								}
 								| TK_NUM_INT
 								{
@@ -182,7 +183,7 @@ E								: E '+' E
 								}
 								| TK_BOOL
 								{
-									$$ = litCodeGenerator("int", $1.label);
+									$$ = litCodeGenerator("bool", $1.label);
 								}
 								| TK_ID
 								{
@@ -190,35 +191,35 @@ E								: E '+' E
 								}
 								| E TK_EQ E
 								{
-									$$ = opCodeGenerator("==", $1, $3);
+									$$ = logicRelCodeGenerator("==", $1, $3);
 								}
 								| E TK_NEQ E
 								{
-									$$ = opCodeGenerator("!=", $1, $3);
+									$$ = logicRelCodeGenerator("!=", $1, $3);
 								}
 								| E TK_LT E
 								{
-									$$ = opCodeGenerator("<", $1, $3);
+									$$ = logicRelCodeGenerator("<", $1, $3);
 								}
 								| E TK_GT E
 								{
-									$$ = opCodeGenerator(">", $1, $3);
+									$$ = logicRelCodeGenerator(">", $1, $3);
 								}
 								| E TK_LEQ E
 								{
-									$$ = opCodeGenerator("<=", $1, $3);
+									$$ = logicRelCodeGenerator("<=", $1, $3);
 								}
 								| E TK_GEQ E
 								{
-									$$ = opCodeGenerator(">=", $1, $3);
+									$$ = logicRelCodeGenerator(">=", $1, $3);
 								}
 								| E TK_AND E
 								{
-									$$ = opCodeGenerator("&&", $1, $3);
+									$$ = logicRelCodeGenerator("&&", $1, $3);
 								}
 								| E TK_OR E
 								{
-									$$ = opCodeGenerator("||", $1, $3);
+									$$ = logicRelCodeGenerator("||", $1, $3);
 								}
 								| TK_NOT E
 								{
@@ -238,7 +239,7 @@ E								: E '+' E
 								}
 								| TK_LPAREN TK_TYPE_BOOL TK_RPAREN E %prec CAST_PREC
 								{
-									$$ = castCodeGenerator("int", $4);
+									$$ = castCodeGenerator("bool", $4);
 								}
 								;
 
@@ -248,10 +249,10 @@ E								: E '+' E
 
 int yyparse();
 
-string gentempcode(string type)
+string genAlias(string type)
 {
 	var_temp_qnt++;
-	string name = "t" + to_string(var_temp_qnt);
+	string name = "_t" + to_string(var_temp_qnt);
 	alias_types[name] = type;
 	return name;
 }
@@ -259,24 +260,38 @@ string resultType(string t1, string t2)
 {
 	if(t1 == "error" || t2 == "error") return "error";
 	if(t1 == "char" || t2 == "char") return "error";
+	if(t1 == "bool" || t2 == "bool") return "error";
 	if(t1 == "float" || t2 == "float") return "float";
 	return "int";
 }
 void varDeclaration(string name, string type)
 {
 	if(symbol_table.count(name)) {
-		yyerror("Erro: Variável '" + name + " já declarada!");
+		yyerror("Erro Sintatico: Variavel '" + name + " ja declarada!");
+		return;
 	} else {
-		string t = gentempcode(type);
-		symbol_table[name] = {name, t, type};
+		string aliasType;
+		if(type == "bool") {
+			aliasType = "int";
+		} else {
+			aliasType = type;
+		}
+		string t = genAlias(aliasType);
+		symbol_table[name] = {name, t, type};		
 	}
 }
 attributes opCodeGenerator(string op, attributes left, attributes right)
 {
 	attributes r;
+	if(left.type=="error"||right.type=="error") {
+		r.label = "";
+        r.type = "error";
+        r.traducao = "";
+        return r;
+	}
 	string opType = resultType(left.type, right.type);
 	if(opType == "error") {
-		yyerror("Erro: Tipos Incompatíveis");
+		yyerror("Erro Semantico: Tipos Incompativeis");
 		r.label = "";
 		r.type = "error";
 		r.traducao = "";
@@ -287,17 +302,17 @@ attributes opCodeGenerator(string op, attributes left, attributes right)
 	string rightLabel = right.label;
 	if(opType == "float") {
 		if(left.type == "int") {
-			string t_conv = gentempcode("float");
+			string t_conv = genAlias("float");
 			accumulatedTransl += "\t" + t_conv + " = (float) " + left.label + ";\n";
 			leftLabel = t_conv;
 		}
 		if(right.type == "int") {
-			string t_conv = gentempcode("float");
+			string t_conv = genAlias("float");
 			accumulatedTransl += "\t" + t_conv + " = (float) " + right.label + ";\n";
 			rightLabel = t_conv;
 		}
 	}
-	r.label = gentempcode(opType);
+	r.label = genAlias(opType);
 	r.type = opType;
 	r.traducao = accumulatedTransl + "\t" + r.label + " = " + leftLabel + " " + op + " " + rightLabel + ";\n";
 	return r;
@@ -305,15 +320,28 @@ attributes opCodeGenerator(string op, attributes left, attributes right)
 attributes unopCodeGenerator(string op, attributes right)
 {
 	attributes r;
-	r.label = gentempcode("int");
-	r.type = "int";
-	r.traducao = right.traducao + "\t" + r.label + " = " + op + right.label + ";\n";
-	return r;
+    if(right.type != "bool") {
+        yyerror("Erro Semantico: Operador '!' exige tipo booleano.");
+        r.label = "";
+        r.type = "error";
+        r.traducao = "";
+        return r;
+    }
+    r.label = genAlias("int");
+    r.type = "bool";
+    r.traducao = right.traducao + "\t" + r.label + " = " + op + right.label + ";\n";
+    return r;
 }
 attributes litCodeGenerator(string type, string value)
 {
 	attributes r;
-	r.label = gentempcode(type);
+	string aliasType;
+	if(type == "bool") {
+		aliasType = "int";
+	} else {
+		aliasType = type;
+	}
+	r.label = genAlias(aliasType);
 	r.type = type;
 	r.traducao = "\t" + r.label + " = " + value + ";\n";
 	return r;
@@ -326,7 +354,7 @@ attributes IDVerifier(string name)
 		r.type = symbol_table[name].type;
 		r.traducao = "";
 	} else {
-		yyerror("Erro: Variável '" + name + "' não foi declarada!");
+		yyerror("Erro Sintatico: Variavel '" + name + "' nao foi declarada!");
 		r.label = "";
 		r.type = "error";
 		r.traducao = "";
@@ -343,17 +371,14 @@ attributes castCodeGenerator(string tType, attributes right)
 		return r;
 	}
 	bool error = false;
-	if (tType == "char") {
-        if (right.type != "char") error = true;
-    } 
-    else if (tType == "bool") {
-        if (right.type != "int" && right.type != "bool") error = true;
-    }
-    else if (tType == "int") {
-        if (right.type == "char") error = true;
-    }
+	if(tType != "char") {
+		if(right.type == "char") error = true;
+	}
+	else if(tType == "char") {
+		if(right.type != "char") error = true;
+	}
     if (error) {
-		yyerror("Erro Semântico: Conversão ilegal de '" + right.type + "' para '" + tType + "'");
+		yyerror("Erro Semantico: Conversao ilegal de '" + right.type + "' para '" + tType + "'");
 		r.label = "";
         r.type = "error";
         r.traducao = "";
@@ -362,9 +387,60 @@ attributes castCodeGenerator(string tType, attributes right)
     if (right.type == tType) {
 		return right;
 	}
-    r.label = gentempcode(tType);
+	string aliasType;
+		if(tType == "bool") {
+			aliasType = "int";
+		} else {
+			aliasType = tType;
+		}
+    r.label = genAlias(aliasType);
     r.type = tType;
     r.traducao = right.traducao + "\t" + r.label + " = (" + tType + ") " + right.label + ";\n";
+    return r;
+}
+attributes logicRelCodeGenerator(string op, attributes left, attributes right) {
+	attributes r;
+	if(left.type == "error" || right.type == "error") {
+		r.label = "";
+        r.type = "error";
+        r.traducao = "";
+        return r;
+	}
+	if(op == "&&" || op == "||") {
+		if(left.type != "bool" || right.type != "bool") {
+			yyerror("Erro Semantico: Operadores logicos exigem tipos booleanos!");
+			r.label = "";
+			r.type = "error";
+			r.traducao = "";
+			return r;
+		}
+	}
+	if((left.type == "char"&&right.type!="char") || (left.type!="char"&&right.type=="char")) {
+		yyerror("Erro Semantico: Nao e possivel comparar char com outros tipos!");
+		r.label = "";
+		r.type = "error";
+		r.traducao = "";
+		return r;
+	}
+    r.label = genAlias("int"); 
+    r.type = "bool"; 
+    string leftLabel = left.label;
+    string rightLabel = right.label;
+    string extraTrad = "";
+    if(left.type != right.type && (left.type == "float" || right.type == "float")) {
+        if(left.type == "int") {
+            string t = genAlias("float");
+            extraTrad += "\t" + t + " = (float) " + left.label + ";\n";
+            leftLabel = t;
+        }
+        if(right.type == "int") {
+            string t = genAlias("float");
+            extraTrad += "\t" + t + " = (float) " + right.label + ";\n";
+            rightLabel = t;
+        }
+    }
+    r.traducao = left.traducao + right.traducao + extraTrad + 
+                 "\t" + r.label + " = " + leftLabel + " " + op + " " + rightLabel + ";\n";
     return r;
 }
 

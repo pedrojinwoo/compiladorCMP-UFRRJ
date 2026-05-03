@@ -1,11 +1,11 @@
-# SCANNER := flex
-SCANNER := win_flex
+SCANNER := flex
+# SCANNER := win_flex (PARA WINDOWS (INSTALADO POR WINGET))
 SCANNER_PARAMS := lexico.l
-PARSER := win_bison
-# PARSER := bison
+# PARSER := win_bison (PARA WINDOWS (INSTALADO POR WINGET))
+PARSER := bison
 PARSER_PARAMS := -d --yacc sintatico.y
 CXXFLAGS := -Wno-free-nonheap-object
-FILE := testeGeral.foca
+FILE := testeGeral.viper
 
 all: glf translate
 
@@ -21,8 +21,8 @@ y.tab.c y.tab.h: sintatico.y
 		$(PARSER) $(PARSER_PARAMS)
 
 translate: glf
-		glf < $(FILE)
-#		./glf < $(FILE)
+#		glf < $(FILE) (PARA WINDOWS (INSTALADO POR WINGET))
+		./glf < $(FILE)
 
 run: glf
 		./glf < $(FILE) > /tmp/foca_output.c && gcc /tmp/foca_output.c -o /tmp/foca_output && /tmp/foca_output
