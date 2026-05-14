@@ -1,7 +1,7 @@
 %{
 #include <iostream>
 #include <string>
-
+#include <variant>
 #include <map>
 #include <vector>
 
@@ -14,12 +14,14 @@ struct attributes
 	string label;
 	string traducao;
 	string type;
+	variant<monostate, int, float, char, bool, string> value;
 };
 struct symbol
 {
 	string id;
 	string alias;
 	string type;
+	variant<monostate, int, float, char, bool, string> value;
 };
 
 int var_temp_qnt;
@@ -44,7 +46,7 @@ attributes stringOrchestrator(string op, attributes left, attributes right);
 attributes stringAssignment(attributes left, attributes right);
 %}
 
-%token TK_SEMICOLON\
+%token TK_SEMICOLON
 %token TK_ID TK_NUM_INT TK_NUM_FLOAT TK_CHAR TK_BOOL TK_STRING
 %token TK_LPAREN TK_RPAREN
 %token TK_ASSIGN TK_EQ TK_NEQ TK_LT TK_GT TK_LEQ TK_GEQ
@@ -84,7 +86,7 @@ S 							: CMDS
 								}
 								;
 
-CMDS 						: CMDS CMD
+CMDS 						: CMD CMDS
 								{
 									$$.traducao = $1.traducao + $2.traducao;
 								}
@@ -501,7 +503,6 @@ attributes stringAssignment(attributes left, attributes right)
 	}
 	sym.value = right.value;
 	r.traducao =
-		right.traducao +
 		tradFree +
 		"\t" + sym.alias + " = (char*)malloc(" + to_string(get<string>(right.value).size() + 1) + ");\n" +
 		"\tstrcpy(" + sym.alias + ", \"" + get<string>(right.value) + "\");\n";
