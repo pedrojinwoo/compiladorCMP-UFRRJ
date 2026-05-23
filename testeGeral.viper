@@ -1,10 +1,8 @@
-char C;
-scan(C);
 {
-  int I;
-  scan(I);
-  print(I);
-}
-{
-  print(C);
+  string S;
+  string S2;
+  scan(S);
+  scan(S2);
+  print(S);
+  print(S2);
 }

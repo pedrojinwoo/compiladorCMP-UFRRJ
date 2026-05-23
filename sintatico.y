@@ -46,6 +46,7 @@ class Scope
 int var_temp_qnt;
 int linha = 1;
 bool generalError = false;
+bool stringScan = false;
 string codigo_gerado;
 map<string, string> alias_types;
 Scope*current_scope = new Scope(nullptr);
@@ -96,10 +97,22 @@ S 							: CMDS
 								{
 									if(!generalError)
 									{
-										codigo_gerado = "/*Compilador VIPERIDAE*/\n"
-																		"#include <stdio.h>\n"
-																		"#include <string.h>\n"
-																		"int main(void) {\n";
+										codigo_gerado = 
+											"\n"
+											"/*Compilador VIPERIDAE*/\n"
+											"#include <stdio.h>\n"
+											"#include <stdlib.h>\n"
+											"#include <string.h>\n"
+											;
+
+										if(stringScan) {
+											codigo_gerado +=
+												"\nchar _stringBuffer[2048];"
+												"\nint _stringLength(char* _str);"
+												;
+										}
+
+										codigo_gerado += "\n\nint main() {\n";
 
 										for(int i=1; i<=var_temp_qnt; i++) {
 											string t = "_t" + to_string(i);
@@ -112,6 +125,22 @@ S 							: CMDS
 
 										codigo_gerado += "\treturn 0;"
 													"\n}\n";
+
+										if(stringScan) {
+											codigo_gerado += 
+												"\nint _stringLength(char* _str) {\n"
+												"\tint _len;\n"
+												"\tint _len2;\n"
+												"\t_len = 0;\n"
+												"\t_len2 = 0;\n"
+												"\twhile(_str[_len] != '\\0') {\n"
+												"\t\t_len++;\n"
+												"\t}\n"
+												"\t_len2 = _len + 1;\n"
+												"\t_len = _len2;\n"
+												"\treturn _len;\n"
+												"}\n";
+										}
 									}
 									
 								}
@@ -396,9 +425,18 @@ attributes IOCodeGenerator(string op, attributes right) {
 			r.traducao = "\tscanf(\" %c\", &" + right.label + ");\n";
     } else if (right.type == "bool")  {
 			r.traducao = "\tscanf(\"%d\", &" + right.label + ");\n";
-    } else {
-      return errorReport("Erro Semantico: Tipo não suportado!");
+    } else if (right.type == "string")  {
+			stringScan = true;
+			string scanLength = genAlias("int");
+			r.traducao =
+				"\tscanf(\" %2047[^\\n/]\", _stringBuffer);\n"
+				"\t" + scanLength + " = _stringLength(_stringBuffer);\n"
+				"\t" + right.label + " = (char*)malloc(" + scanLength + ");\n"
+				"\tstrcpy(" + right.label + ", _stringBuffer);\n";
+		} else {
+      r = errorReport("Erro Semantico: Tipo não suportado!");
     }
+		return r;
   } 
   else if (op == "print") {
     string formato = "";
@@ -410,8 +448,11 @@ attributes IOCodeGenerator(string op, attributes right) {
 			formato = "%c\\n";
     } else if (right.type == "bool") {
 			formato = "%d\\n";
-    } else {
-      return errorReport("Erro Semantico: Tipo não suportado!");
+    } else if (right.type == "string") {
+			formato = "%s\\n"; 
+		}else {
+      r = errorReport("Erro Semantico: Tipo não suportado!");
+      return r;
     }
     r.traducao = right.traducao + "\tprintf(\"" + formato + "\", " + right.label + ");\n";
   }
