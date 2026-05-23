@@ -1,7 +1,10 @@
-string f;
-f = "fora";
+char C;
+scan(C);
 {
-  string d;
-  d = "dentro";
-  f = d;
+  int I;
+  scan(I);
+  print(I);
+}
+{
+  print(C);
 }
