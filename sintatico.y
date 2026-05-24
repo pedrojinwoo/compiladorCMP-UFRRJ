@@ -4,6 +4,7 @@
 #include <variant>
 #include <map>
 #include <vector>
+#include <stack>
 
 #define YYSTYPE attributes
 
@@ -22,6 +23,11 @@ struct symbol
 	string alias;
 	string type;
 	variant<monostate, int, float, char, bool, string> value;
+};
+struct labelPair
+{
+	string falseLabel;
+	string endLabel;
 };
 
 // CLASSE PARA ESCOPO
@@ -44,17 +50,20 @@ class Scope
 
 // VARIÁVEIS, MAPAS E FUNÇÕES/CALLS GLOBAIS
 int var_temp_qnt;
+int label_qnt=0;
 int linha = 1;
 bool generalError = false;
 bool stringScan = false;
 string codigo_gerado;
 map<string, string> alias_types;
+static stack<labelPair> labelStack;
 Scope*current_scope = new Scope(nullptr);
 int yylex(void);
 void yyerror(string);
 
 // Construtores de funções
 string genAlias(string type);
+int genLabel();
 string resultType(string t1, string t2);
 void varDeclaration(string name, string type);
 attributes opCodeGeneratorOrchestrator(string op, attributes left, attributes right);
@@ -81,6 +90,7 @@ attributes ScanCodeGenerator(string op, attributes right);
 %token TK_ASSIGN TK_EQ TK_NEQ TK_LT TK_GT TK_LEQ TK_GEQ
 %token TK_AND TK_OR TK_NOT
 %token TK_SCAN TK_PRINT
+%token TK_IF TK_ELSE
 %nonassoc CAST_PREC
 
 %start S
@@ -217,6 +227,10 @@ CMD							: DECLARATION
 								{
 									$$.traducao = $3.traducao;
 								}
+								| CONTROL
+								{
+									$$.traducao = $1.traducao;
+								}
 								;
 
 DECLARATION			: TK_TYPE_INT TK_ID TK_SEMICOLON
@@ -272,6 +286,63 @@ ASSIGNMENT			: TK_ID TK_ASSIGN E TK_SEMICOLON
 											generalError = true;
 										}
 									}
+								}
+								;
+
+CONTROL					: TK_IF TK_LPAREN E TK_RPAREN
+								{
+									if($3.type != "bool") {
+										yyerror("Erro Semantico: Condição de 'if' deve ser do tipo booleano!");
+										$$.traducao = $3.traducao;
+										generalError = true;
+									}
+									attributes negOperand = unopCodeGenerator("!", $3);
+									int controlID = genLabel();
+									labelPair lp;
+									lp.falseLabel = "IFELSE_" + to_string(controlID);
+									lp.endLabel = "IFEND_" + to_string(controlID);
+									labelStack.push(lp);
+									if($7.traducao == "") {
+										$$.traducao =
+											negOperand.traducao +
+											"\tif(" + negOperand.label + ") goto " + lp.endLabel + ";\n"
+											;
+									} else {
+										$$.traducao =
+											negOperand.traducao +
+											"\tif(" + negOperand.label + ") goto " + lp.falseLabel + ";\n"
+											;
+									}
+								}
+								CMD ELSE
+								{
+									labelPair lp = labelStack.top();
+									labelStack.pop();
+									if($7.traducao == "") {
+										$$.traducao =
+											$5.traducao +
+											$6.traducao +
+											lp.endLabel + ":\n"
+											;
+									} else {
+										$$.traducao =
+											$5.traducao +
+											$6.traducao +
+											"\tgoto " + lp.endLabel + ";\n" +
+											lp.falseLabel + ":\n" +
+											$7.traducao +
+											lp.endLabel + ":\n"
+											;
+									}
+								}
+								;
+ELSE						: TK_ELSE CMD
+								{
+									$$.traducao = $2.traducao;
+								}
+								|
+								{
+									$$.traducao = "";
 								}
 								;
 
@@ -423,6 +494,11 @@ string genAlias(string type)
 	string name = "_t" + to_string(var_temp_qnt);
 	alias_types[name] = type;
 	return name;
+}
+int genLabel()
+{
+	label_qnt++;
+	return label_qnt;
 }
 string resultType(string t1, string t2)
 {

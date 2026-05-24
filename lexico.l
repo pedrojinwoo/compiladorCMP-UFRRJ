@@ -53,6 +53,9 @@ STRING              \"{STRCONTENT}\"
 "scan"              { return TK_SCAN; }
 "print"             { return TK_PRINT; }
 
+"if"                { return TK_IF; }
+"else"              { return TK_ELSE; }
+
 "true"              { yylval.label = "1"; return TK_BOOL; }
 "false"             { yylval.label = "0"; return TK_BOOL; }
 {NUM_INT}		    { yylval.label = yytext; return TK_NUM_INT; }
