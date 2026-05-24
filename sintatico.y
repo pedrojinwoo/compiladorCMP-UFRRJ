@@ -528,7 +528,9 @@ attributes litCodeGenerator(string type, string value)
 		r.traducao = 
 			"\t" + r.label + " = (char*)malloc(" + to_string(attValue.size() + 1) + ");\n" +
 			"\tstrcpy(" + r.label + ", \"" + value + "\");\n";
-	} else {
+	} else if(type == "char") {
+		r.traducao = "\t" + r.label + " = \'" + value + "\';\n";
+	} else{
 		r.traducao = "\t" + r.label + " = " + value + ";\n";
 	}
 	return r;

@@ -7,6 +7,7 @@
 ESPACO [ \t]
 DIGIT [0-9]
 CHARACTER [a-zA-Z_]
+ESCAPE \\[ntr0\\]
 IDSTART [a-zA-Z]
 STRCONTENT[^\"]*
 
@@ -14,7 +15,7 @@ DELIM               {ESPACO}+
 NUM_INT             {DIGIT}+
 NUM_FLOAT           {DIGIT}+"."{DIGIT}+
 ID                  {IDSTART}({CHARACTER}|{DIGIT})*
-CHAR                \'{CHARACTER}\'
+CHAR                \'({CHARACTER}|{ESCAPE})\'
 STRING              \"{STRCONTENT}\"
 
 %%

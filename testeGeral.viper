@@ -1,8 +1,8 @@
 {
   string S;
-  string S2;
+  string S1;
   scan(S);
-  scan(S2);
+  scan(S1);
   print(S);
-  print(S2);
+  print(S1);
 }
