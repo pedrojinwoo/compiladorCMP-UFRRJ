@@ -69,7 +69,7 @@ attributes stringAssignment(attributes left, attributes right);
 void pushScope();
 void popScope();
 attributes errorReport(string msg);
-attributes IOCodeGenerator(string op, attributes right);
+attributes ScanCodeGenerator(string op, attributes right);
 %}
 
 %token TK_SEMICOLON
@@ -374,13 +374,87 @@ E								: E '+' E
 								| TK_SCAN TK_LPAREN TK_ID TK_RPAREN
 								{
 									attributes idAttr = IDVerifier($3.label);
-									$$ = IOCodeGenerator("scan", idAttr);
+									$$ = ScanCodeGenerator("scan", idAttr);
 								}
-								| TK_PRINT TK_LPAREN E TK_RPAREN
+								| TK_PRINT TK_LPAREN PRINT_EXPR TK_RPAREN
 								{
-									$$ = IOCodeGenerator("print", $3);
+									$$.traducao =
+										$3.traducao +
+										"\tprintf(\"" + $3.label + "\\n\"" + $3.type + ");\n";
 								}
 								;
+
+PRINT_EXPR			: EXPR_ITEM '+' PRINT_EXPR
+								{
+									$$.label = $1.label + $3.label;
+									$$.type = $1.type + $3.type;
+									$$.traducao = $1.traducao + $3.traducao;
+								}
+								| EXPR_ITEM
+								{
+									$$.label = $1.label;
+									$$.type = $1.type;
+									$$.traducao = $1.traducao;
+								}
+								;
+
+EXPR_ITEM				: E2
+								{
+									$$.traducao = $1.traducao;
+									if($1.type == "error") {
+										$$.type = "error";
+										$$.label = "";
+									}
+									else if($1.type == "int") {
+										$$.type = ", " + $1.label;
+										$$.label = "%d";
+									} else if($1.type == "float") {
+										$$.type = ", " + $1.label;
+										$$.label = "%f";
+									} else if($1.type == "char") {
+										$$.type = ", " + $1.label;
+										$$.label = "%c";
+									} else if($1.type == "bool") {
+										$$.type = ", " + $1.label;
+										$$.label = "%d";
+									} else if($1.type == "string") {
+										$$.type = ", " + $1.label;
+										$$.label = "%s";
+									}
+								}
+								;
+
+E2       				: TK_ID
+								{
+									$$ = IDVerifier($1.label);
+								}
+                | TK_NUM_INT
+								{
+									$$ = litCodeGenerator("int", $1.label);
+								}
+                | TK_NUM_FLOAT
+								{
+									$$ = litCodeGenerator("float", $1.label);
+								}
+                | TK_CHAR
+								{
+									$$ = litCodeGenerator("char", $1.label);
+								}
+                | TK_BOOL
+								{
+									$$ = litCodeGenerator("bool", $1.label);
+								}
+                | TK_STRING
+								{
+									$$ = litCodeGenerator("string", $1.label);
+								}
+                | TK_LPAREN E TK_RPAREN 
+                { 
+                  $$.label = $2.label; 
+                  $$.traducao = $2.traducao; 
+                  $$.type = $2.type; 
+                }
+                ;
 
 %%
 
@@ -453,55 +527,34 @@ void varDeclaration(string name, string type)
 
 
 // ENTRADA E SAÍDA
-attributes IOCodeGenerator(string op, attributes right) {
+attributes ScanCodeGenerator(string op, attributes right) {
 	attributes r;
 	if(right.type == "error") {
 		r = errorReport("");
 		return r;
 	}
-	if (op == "scan") {
-    if (right.type == "int") {
-			r.traducao = "\tscanf(\"%d\", &" + right.label + ");\n";
-    } else if (right.type == "float") {
-			r.traducao = "\tscanf(\"%f\", &" + right.label + ");\n";
-    } else if (right.type == "char")  {
-			r.traducao = "\tscanf(\" %c\", &" + right.label + ");\n";
-    } else if (right.type == "bool")  {
-			r.traducao = "\tscanf(\"%d\", &" + right.label + ");\n";
-    } else if (right.type == "string")  {
-			stringScan = true;
-			string scanLength = genAlias("int");
-			r.traducao =
-				"\tscanf(\" %5[^\\n/]\", _stringBuffer);\n"
-				"\t_keyboardCleanup();\n"
-				"\t" + scanLength + " = _stringLength(_stringBuffer);\n"
-				"\t" + right.label + " = (char*)malloc(" + scanLength + ");\n"
-				"\tstrcpy(" + right.label + ", _stringBuffer);\n";
-		} else {
-      r = errorReport("Erro Semantico: Tipo não suportado!");
-    }
-		return r;
-  } 
-  else if (op == "print") {
-    string formato = "";
-    if (right.type == "int") {
-			formato = "%d\\n";
-    } else if (right.type == "float") {
-			formato = "%f\\n";
-    } else if (right.type == "char") {
-			formato = "%c\\n";
-    } else if (right.type == "bool") {
-			formato = "%d\\n";
-    } else if (right.type == "string") {
-			formato = "%s\\n"; 
-		}else {
-      r = errorReport("Erro Semantico: Tipo não suportado!");
-      return r;
-    }
-    r.traducao = right.traducao + "\tprintf(\"" + formato + "\", " + right.label + ");\n";
-  }
+	if (right.type == "int") {
+		r.traducao = "\tscanf(\"%d\", &" + right.label + ");\n";
+	} else if (right.type == "float") {
+		r.traducao = "\tscanf(\"%f\", &" + right.label + ");\n";
+	} else if (right.type == "char")  {
+		r.traducao = "\tscanf(\" %c\", &" + right.label + ");\n";
+	} else if (right.type == "bool")  {
+		r.traducao = "\tscanf(\"%d\", &" + right.label + ");\n";
+	} else if (right.type == "string")  {
+		stringScan = true;
+		string scanLength = genAlias("int");
+		r.traducao =
+			"\tscanf(\" %5[^\\n/]\", _stringBuffer);\n"
+			"\t_keyboardCleanup();\n"
+			"\t" + scanLength + " = _stringLength(_stringBuffer);\n"
+			"\t" + right.label + " = (char*)malloc(" + scanLength + ");\n"
+			"\tstrcpy(" + right.label + ", _stringBuffer);\n";
+	} else {
+		r = errorReport("Erro Semantico: Tipo não suportado!");
+	}
+	return r;
 
-  return r;
 }
 
 
