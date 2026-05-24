@@ -1,5 +1,4 @@
 {
-  string S;
-  S = "oi";
-  print("Hello World " + S);
+  int I;
+  I = 15 + 5;
 }

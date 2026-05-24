@@ -57,7 +57,9 @@ void yyerror(string);
 string genAlias(string type);
 string resultType(string t1, string t2);
 void varDeclaration(string name, string type);
-attributes opCodeGenerator(string op, attributes left, attributes right);
+attributes opCodeGeneratorOrchestrator(string op, attributes left, attributes right);
+attributes complexStringCodeGenerator(attributes left, attributes right);
+attributes commonOpCodeGenerator(string op, attributes left, attributes right, string opType);
 attributes unopCodeGenerator(string op, attributes right);
 attributes litCodeGenerator(string type, string value);
 attributes IDVerifier(string name);
@@ -275,19 +277,19 @@ ASSIGNMENT			: TK_ID TK_ASSIGN E TK_SEMICOLON
 
 E								: E '+' E
 								{
-									$$ = opCodeGenerator("+", $1, $3);
+									$$ = opCodeGeneratorOrchestrator("+", $1, $3);
 								}
 								|	E '-' E
 								{
-									$$ = opCodeGenerator("-", $1, $3);
+									$$ = opCodeGeneratorOrchestrator("-", $1, $3);
 								}
 								| E '*' E
 								{
-									$$ = opCodeGenerator("*", $1, $3);
+									$$ = opCodeGeneratorOrchestrator("*", $1, $3);
 								}
 								| E '/' E
 								{
-									$$ = opCodeGenerator("/", $1, $3);
+									$$ = opCodeGeneratorOrchestrator("/", $1, $3);
 								}
 								| TK_LPAREN E TK_RPAREN
 								{
@@ -376,85 +378,35 @@ E								: E '+' E
 									attributes idAttr = IDVerifier($3.label);
 									$$ = ScanCodeGenerator("scan", idAttr);
 								}
-								| TK_PRINT TK_LPAREN PRINT_EXPR TK_RPAREN
+								| TK_PRINT TK_LPAREN E TK_RPAREN
 								{
-									$$.traducao =
-										$3.traducao +
-										"\tprintf(\"" + $3.label + "\\n\"" + $3.type + ");\n";
-								}
-								;
-
-PRINT_EXPR			: EXPR_ITEM '+' PRINT_EXPR
-								{
-									$$.label = $1.label + $3.label;
-									$$.type = $1.type + $3.type;
-									$$.traducao = $1.traducao + $3.traducao;
-								}
-								| EXPR_ITEM
-								{
-									$$.label = $1.label;
-									$$.type = $1.type;
-									$$.traducao = $1.traducao;
-								}
-								;
-
-EXPR_ITEM				: E2
-								{
-									$$.traducao = $1.traducao;
-									if($1.type == "error") {
-										$$.type = "error";
-										$$.label = "";
-									}
-									else if($1.type == "int") {
-										$$.type = ", " + $1.label;
-										$$.label = "%d";
-									} else if($1.type == "float") {
-										$$.type = ", " + $1.label;
-										$$.label = "%f";
-									} else if($1.type == "char") {
-										$$.type = ", " + $1.label;
-										$$.label = "%c";
-									} else if($1.type == "bool") {
-										$$.type = ", " + $1.label;
-										$$.label = "%d";
-									} else if($1.type == "string") {
-										$$.type = ", " + $1.label;
-										$$.label = "%s";
+									if($3.type == "complexString") {
+										string args = get<string>($3.value);
+										$$.traducao = 
+											$3.traducao +
+											"\tprintf(\"" + $3.label + "\\n\"" + args + ");\n"
+											;
+									} else {
+										string format = "";
+										if ($3.type == "int") {
+											format = "%d\\n";
+										} else if ($3.type == "float") {
+											format = "%f\\n";
+										} else if ($3.type == "char") {
+											format = "%c\\n";
+										} else if ($3.type == "bool") {
+											format = "%d\\n";
+										} else if ($3.type == "string") {
+											format = "%s\\n";
+										}
+										
+										$$.traducao =
+											$3.traducao +
+											"\tprintf(\"" + format + "\", " + $3.label + ");\n"
+											;
 									}
 								}
 								;
-
-E2       				: TK_ID
-								{
-									$$ = IDVerifier($1.label);
-								}
-                | TK_NUM_INT
-								{
-									$$ = litCodeGenerator("int", $1.label);
-								}
-                | TK_NUM_FLOAT
-								{
-									$$ = litCodeGenerator("float", $1.label);
-								}
-                | TK_CHAR
-								{
-									$$ = litCodeGenerator("char", $1.label);
-								}
-                | TK_BOOL
-								{
-									$$ = litCodeGenerator("bool", $1.label);
-								}
-                | TK_STRING
-								{
-									$$ = litCodeGenerator("string", $1.label);
-								}
-                | TK_LPAREN E TK_RPAREN 
-                { 
-                  $$.label = $2.label; 
-                  $$.traducao = $2.traducao; 
-                  $$.type = $2.type; 
-                }
-                ;
 
 %%
 
@@ -478,6 +430,9 @@ string resultType(string t1, string t2)
 	if(t1 == "char" || t2 == "char") return "error";
 	if(t1 == "bool" || t2 == "bool") return "error";
 	if(t1 == "float" || t2 == "float") return "float";
+	if(t1 == "string" || t2 == "string" || t1 == "complexString" || t2 == "complexString") {
+		return "complexString";
+	}
 	return "int";
 }
 attributes errorReport(string msg) {
@@ -591,7 +546,7 @@ attributes litCodeGenerator(string type, string value)
 
 
 // OPERAÇÕES ARITMÉTICAS
-attributes opCodeGenerator(string op, attributes left, attributes right)
+attributes opCodeGeneratorOrchestrator(string op, attributes left, attributes right)
 {
 	attributes r;
 	if(left.type=="error"||right.type=="error") {
@@ -603,6 +558,62 @@ attributes opCodeGenerator(string op, attributes left, attributes right)
 		r = errorReport("Erro Semantico: Tipos incompatíveis para a operação '" + op + "'");
 		return r;
 	}
+	if(op == "+" && opType == "complexString") {
+		r = complexStringCodeGenerator(left, right);
+		return r;
+	}
+	r = commonOpCodeGenerator(op, left, right, opType);
+	
+	return r;
+}
+attributes complexStringCodeGenerator(attributes left, attributes right)
+{
+	attributes r;
+	r.type = "complexString";
+	r.traducao = left.traducao + right.traducao;
+	string leftMasks = "";
+	string rightMasks = "";
+    if (left.type == "string_composta") {
+      leftMasks = left.label;
+    } else if (left.type == "string") {
+      leftMasks = "%s";
+    } else if (left.type == "int" || left.type == "bool") {
+      leftMasks = "%d";
+    } else if (left.type == "float") {
+      leftMasks = "%f";
+    } else if (left.type == "char") {
+      leftMasks = "%c";
+    }
+    if (right.type == "string_composta") {
+      rightMasks = right.label;
+    } else if (right.type == "string") {
+      rightMasks = "%s";
+    } else if (right.type == "int" || right.type == "bool") {
+      rightMasks = "%d";
+    } else if (right.type == "float") {
+      rightMasks = "%f";
+    } else if (right.type == "char") {
+      rightMasks = "%c";
+    }
+    r.label = leftMasks + rightMasks;
+    string arg_left = "";
+    if (left.type == "string_composta") {
+      arg_left = get<string>(left.value);
+    } else {
+      arg_left = ", " + left.label;
+    }
+    string arg_right = "";
+    if (right.type == "string_composta") {
+      arg_right = get<string>(right.value);
+    } else {
+      arg_right = ", " + right.label;
+    }
+    r.value = arg_left + arg_right;
+    return r;
+}
+attributes commonOpCodeGenerator(string op, attributes left, attributes right, string opType)
+{
+	attributes r;
 	string accumulatedTransl = left.traducao + right.traducao;
 	string leftLabel = left.label;
 	string rightLabel = right.label;
@@ -620,11 +631,13 @@ attributes opCodeGenerator(string op, attributes left, attributes right)
 	}
 	r.label = genAlias(opType);
 	r.type = opType;
+	r.value = opType;
 	r.traducao = 
 		accumulatedTransl + 
 		"\t" + r.label + " = " + leftLabel + " " + op + " " + rightLabel + ";\n";
 	return r;
 }
+
 
 
 // OPERAÇÕES LÓGICAS E RELACIONAIS
