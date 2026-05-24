@@ -223,15 +223,20 @@ CMD							: DECLARATION
 								{
 									$$.traducao = $1.traducao;
 								}
-								| TK_LBRACE {pushScope();} CMDS TK_RBRACE {popScope();}
+								| BLOCK
 								{
-									$$.traducao = $3.traducao;
+									$$.traducao = $1.traducao;
 								}
 								| CONTROL
 								{
 									$$.traducao = $1.traducao;
 								}
 								;
+
+BLOCK				: TK_LBRACE {pushScope();} CMDS TK_RBRACE {popScope();}
+					{
+						$$.traducao = $3.traducao;
+					}
 
 DECLARATION			: TK_TYPE_INT TK_ID TK_SEMICOLON
 								{
@@ -289,53 +294,45 @@ ASSIGNMENT			: TK_ID TK_ASSIGN E TK_SEMICOLON
 								}
 								;
 
-CONTROL					: TK_IF TK_LPAREN E TK_RPAREN
-								{
-									if($3.type != "bool") {
-										yyerror("Erro Semantico: Condição de 'if' deve ser do tipo booleano!");
-										$$.traducao = $3.traducao;
-										generalError = true;
-									}
-									attributes negOperand = unopCodeGenerator("!", $3);
-									int controlID = genLabel();
-									labelPair lp;
-									lp.falseLabel = "IFELSE_" + to_string(controlID);
-									lp.endLabel = "IFEND_" + to_string(controlID);
-									labelStack.push(lp);
-									if($7.traducao == "") {
-										$$.traducao =
-											negOperand.traducao +
-											"\tif(" + negOperand.label + ") goto " + lp.endLabel + ";\n"
-											;
-									} else {
-										$$.traducao =
-											negOperand.traducao +
-											"\tif(" + negOperand.label + ") goto " + lp.falseLabel + ";\n"
-											;
-									}
+CONTROL					: IF BLOCK ELSE 
+							{
+								labelPair lp = labelStack.top();
+								labelStack.pop();
+								if($3.traducao == "") {
+									$$.traducao =
+										$1.traducao +
+										"\tif(" + $1.label + ") goto " + lp.endLabel + ";\n" +
+										$2.traducao +
+										"\t" + lp.endLabel + ":\n"
+										;
+								} else {
+									$$.traducao =
+										$1.traducao +
+										"\tif(" + $1.label + ") goto " + lp.falseLabel + ";\n" +
+										$2.traducao +
+										"\tgoto " + lp.endLabel + ";\n" +
+										"\t" + lp.falseLabel + ":\n" +
+										$3.traducao +
+										"\t" + lp.endLabel + ":\n"
+										;
 								}
-								CMD ELSE
-								{
-									labelPair lp = labelStack.top();
-									labelStack.pop();
-									if($7.traducao == "") {
-										$$.traducao =
-											$5.traducao +
-											$6.traducao +
-											lp.endLabel + ":\n"
-											;
-									} else {
-										$$.traducao =
-											$5.traducao +
-											$6.traducao +
-											"\tgoto " + lp.endLabel + ";\n" +
-											lp.falseLabel + ":\n" +
-											$7.traducao +
-											lp.endLabel + ":\n"
-											;
-									}
+							}
+							;
+IF 							: TK_IF TK_LPAREN E TK_RPAREN
+							{
+								if($3.type != "bool") {
+									yyerror("Erro Semantico: Condição de 'if' deve ser do tipo booleano!");
+									$$.traducao = $3.traducao;
+									generalError = true;
 								}
-								;
+								attributes negOperand = unopCodeGenerator("!", $3);
+								int controlID = genLabel();
+								labelPair lp;
+								lp.falseLabel = "IFELSE_" + to_string(controlID);
+								lp.endLabel = "IFEND_" + to_string(controlID);
+								labelStack.push(lp);
+								$$ = negOperand;
+							}
 ELSE						: TK_ELSE CMD
 								{
 									$$.traducao = $2.traducao;
