@@ -92,7 +92,7 @@ attributes ScanCodeGenerator(string op, attributes right);
 %token TK_ASSIGN TK_EQ TK_NEQ TK_LT TK_GT TK_LEQ TK_GEQ
 %token TK_AND TK_OR TK_NOT
 %token TK_SCAN TK_PRINT
-%token TK_IF TK_ELSE TK_WHILE
+%token TK_IF TK_ELSE TK_WHILE TK_FOR
 %nonassoc CAST_PREC
 
 %start S
@@ -382,21 +382,110 @@ WHILE						: TK_WHILE TK_LPAREN E TK_RPAREN
 								}
 								;
 
-E								: E '+' E
+E								: LOGICAL
+								{
+									$$ = $1;
+								}
+								;
+LOGICAL					: LOGICAL TK_AND RELATIONAL
+								{
+									$$ = logicRelCodeGenerator("&&", $1, $3);
+								}
+								| LOGICAL TK_OR RELATIONAL
+								{
+									$$ = logicRelCodeGenerator("||", $1, $3);
+								}
+								| TK_NOT LOGICAL
+								{
+									$$ = unopCodeGenerator("!", $2);
+								}
+								| RELATIONAL
+								{
+									$$ = $1;
+								}
+								;
+RELATIONAL			: RELATIONAL TK_EQ ARITHMETICAL
+								{
+									$$ = logicRelCodeGenerator("==", $1, $3);
+								}
+								| RELATIONAL TK_NEQ ARITHMETICAL
+								{
+									$$ = logicRelCodeGenerator("!=", $1, $3);
+								}
+								| RELATIONAL TK_LT ARITHMETICAL
+								{
+									$$ = logicRelCodeGenerator("<", $1, $3);
+								}
+								| RELATIONAL TK_GT ARITHMETICAL
+								{
+									$$ = logicRelCodeGenerator(">", $1, $3);
+								}
+								| RELATIONAL TK_LEQ ARITHMETICAL
+								{
+									$$ = logicRelCodeGenerator("<=", $1, $3);
+								}
+								|  RELATIONAL TK_GEQ ARITHMETICAL
+								{
+									$$ = logicRelCodeGenerator(">=", $1, $3);
+								}
+								| ARITHMETICAL
+								{
+									$$ = $1;
+								}
+								;
+ARITHMETICAL		: ARITHMETICAL '+' CAST
 								{
 									$$ = opCodeGeneratorOrchestrator("+", $1, $3);
 								}
-								|	E '-' E
+								|	ARITHMETICAL '-' CAST
 								{
 									$$ = opCodeGeneratorOrchestrator("-", $1, $3);
 								}
-								| E '*' E
+								| ARITHMETICAL '*' CAST
 								{
 									$$ = opCodeGeneratorOrchestrator("*", $1, $3);
 								}
-								| E '/' E
+								| ARITHMETICAL '/' CAST
 								{
 									$$ = opCodeGeneratorOrchestrator("/", $1, $3);
+								}
+								| CAST
+								{
+									$$ = $1;
+								}
+								;
+CAST						: TK_LPAREN TK_TYPE_INT TK_RPAREN BASE %prec CAST_PREC
+								{
+									$$ = castCodeGenerator("int", $4);
+								}
+								| TK_LPAREN TK_TYPE_FLOAT TK_RPAREN BASE %prec CAST_PREC
+								{
+									$$ = castCodeGenerator("float", $4);
+								}
+								| TK_LPAREN TK_TYPE_CHAR TK_RPAREN BASE %prec CAST_PREC
+								{
+									$$ = castCodeGenerator("char", $4);
+								}
+								| TK_LPAREN TK_TYPE_BOOL TK_RPAREN BASE %prec CAST_PREC
+								{
+									$$ = castCodeGenerator("bool", $4);
+								}
+								| TK_LPAREN TK_TYPE_STRING TK_RPAREN BASE %prec CAST_PREC
+								{
+									$$ = castCodeGenerator("string", $4);
+								}
+								| BASE
+								{
+									$$ = $1;
+								}
+								;
+BASE						:	LITERAL
+								{
+									$$ = $1;
+								}
+								| IO
+								{
+									$$ = $1;
 								}
 								| TK_LPAREN E TK_RPAREN
 								{
@@ -404,7 +493,8 @@ E								: E '+' E
 									$$.traducao = $2.traducao;
 									$$.type = $2.type;
 								}
-								| TK_NUM_INT
+								;
+LITERAL					: TK_NUM_INT
 								{
 									$$ = litCodeGenerator("int", $1.label);
 								}
@@ -428,59 +518,8 @@ E								: E '+' E
 								{
 									$$ = IDVerifier($1.label);
 								}
-								| E TK_EQ E
-								{
-									$$ = logicRelCodeGenerator("==", $1, $3);
-								}
-								| E TK_NEQ E
-								{
-									$$ = logicRelCodeGenerator("!=", $1, $3);
-								}
-								| E TK_LT E
-								{
-									$$ = logicRelCodeGenerator("<", $1, $3);
-								}
-								| E TK_GT E
-								{
-									$$ = logicRelCodeGenerator(">", $1, $3);
-								}
-								| E TK_LEQ E
-								{
-									$$ = logicRelCodeGenerator("<=", $1, $3);
-								}
-								| E TK_GEQ E
-								{
-									$$ = logicRelCodeGenerator(">=", $1, $3);
-								}
-								| E TK_AND E
-								{
-									$$ = logicRelCodeGenerator("&&", $1, $3);
-								}
-								| E TK_OR E
-								{
-									$$ = logicRelCodeGenerator("||", $1, $3);
-								}
-								| TK_NOT E
-								{
-									$$ = unopCodeGenerator("!", $2);
-								}
-								| TK_LPAREN TK_TYPE_INT TK_RPAREN E %prec CAST_PREC
-								{
-									$$ = castCodeGenerator("int", $4);
-								}
-								| TK_LPAREN TK_TYPE_FLOAT TK_RPAREN E %prec CAST_PREC
-								{
-									$$ = castCodeGenerator("float", $4);
-								}
-								| TK_LPAREN TK_TYPE_CHAR TK_RPAREN E %prec CAST_PREC
-								{
-									$$ = castCodeGenerator("char", $4);
-								}
-								| TK_LPAREN TK_TYPE_BOOL TK_RPAREN E %prec CAST_PREC
-								{
-									$$ = castCodeGenerator("bool", $4);
-								}
-								| TK_SCAN TK_LPAREN TK_ID TK_RPAREN
+								;
+IO							: TK_SCAN TK_LPAREN TK_ID TK_RPAREN
 								{
 									attributes idAttr = IDVerifier($3.label);
 									$$ = ScanCodeGenerator("scan", idAttr);
@@ -659,6 +698,7 @@ attributes litCodeGenerator(string type, string value)
 }
 
 
+
 // OPERAÇÕES ARITMÉTICAS
 attributes opCodeGeneratorOrchestrator(string op, attributes left, attributes right)
 {
@@ -811,6 +851,7 @@ attributes logicRelCodeGenerator(string op, attributes left, attributes right)
 }
 
 
+
 // CONVERSÃO
 attributes castCodeGenerator(string tType, attributes right)
 {
@@ -895,6 +936,7 @@ string implicitCast(attributes left, attributes right, string &leftLabel, string
 }
 
 
+
 // ÁREA DE STRING
 attributes stringOrchestrator(string op, attributes left, attributes right)
 {
@@ -926,6 +968,7 @@ attributes stringAssignment(attributes left, attributes right)
 		;
 	return r;
 }
+
 
 
 // ÁREA DE ESCOPO
