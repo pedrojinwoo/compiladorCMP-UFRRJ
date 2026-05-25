@@ -28,6 +28,7 @@ struct labelPair
 {
 	string startLabel;
 	string falseLabel;
+	string stepLabel;
 	string endLabel;
 };
 
@@ -214,7 +215,7 @@ CMD							: DECLARATION
 								{
 									$$.traducao = $1.traducao;
 								}
-								| ASSIGNMENT
+								| ASSIGNCMD
 								{
 									$$.traducao = $1.traducao;
 								}
@@ -264,7 +265,7 @@ DECLARATION			: TK_TYPE_INT TK_ID TK_SEMICOLON
 								}
 								;
 
-ASSIGNMENT			: TK_ID TK_ASSIGN E TK_SEMICOLON
+ASSIGNMENT			: TK_ID TK_ASSIGN E
 								{
 									if(!current_scope->lookup($1.label)) {
 										yyerror("Erro Semantico: Variavel '" + $1.label + "' nao declarada!");
@@ -296,6 +297,11 @@ ASSIGNMENT			: TK_ID TK_ASSIGN E TK_SEMICOLON
 											generalError = true;
 										}
 									}
+								}
+								;
+ASSIGNCMD				: ASSIGNMENT TK_SEMICOLON
+								{
+									$$.traducao = $1.traducao;
 								}
 								;
 
@@ -333,6 +339,39 @@ CONTROL					: IF BLOCK ELSE
 										"\t" + lp.endLabel + ":\n"
 									;
 								}
+								| TK_FOR TK_LPAREN ASSIGNMENT TK_SEMICOLON LOGICAL TK_SEMICOLON  ASSIGNMENT TK_RPAREN BLOCK
+								{
+									if($3.traducao == "" || $5.traducao == "" || $7.traducao == "") {
+										yyerror("Erro Semantico: Expressão inválida no controle 'for'!");
+										$$.traducao = "";
+										$$.type = "error";
+										generalError = true;
+									}
+									if($5.type != "bool") {
+										yyerror("Erro Semantico: Condição de 'for' deve ser do tipo booleano!");
+										$$.traducao = "";
+										$$.type = "error";
+										generalError = true;
+									}
+									int controlID = genLabel();
+									labelPair lp;
+									lp.startLabel = "FORSTART_" + to_string(controlID);
+									lp.falseLabel = "";
+									lp.stepLabel = "FORSTEP_" + to_string(controlID);
+									lp.endLabel = "FOREND_" + to_string(controlID);
+									attributes negOperand = unopCodeGenerator("!", $5);
+									$$.traducao =
+										$3.traducao +
+										"\t" + lp.startLabel + ":\n" +
+										negOperand.traducao +
+										"\tif(" + negOperand.label + ") goto " + lp.endLabel + ";\n" +
+										$9.traducao +
+										"\t" + lp.stepLabel + ":\n" +
+										$7.traducao +
+										"\tgoto " + lp.startLabel + ";\n" +
+										"\t" + lp.endLabel + ":\n"
+									;
+								}
 								;
 IF 							: TK_IF TK_LPAREN E TK_RPAREN
 								{
@@ -346,12 +385,13 @@ IF 							: TK_IF TK_LPAREN E TK_RPAREN
 									labelPair lp;
 									lp.startLabel = "";
 									lp.falseLabel = "IFELSE_" + to_string(controlID);
+									lp.stepLabel = "";
 									lp.endLabel = "IFEND_" + to_string(controlID);
 									labelStack.push(lp);
 									$$ = negOperand;
 								}
 								;
-ELSE						: TK_ELSE CMD
+ELSE						: TK_ELSE BLOCK
 								{
 									$$.traducao = $2.traducao;
 								}
@@ -371,6 +411,7 @@ WHILE						: TK_WHILE TK_LPAREN E TK_RPAREN
 									labelPair lp;
 									lp.startLabel = "WHILESTART_" + to_string(controlID);
 									lp.falseLabel = "";
+									lp.stepLabel = "";
 									lp.endLabel = "WHILEEND_" + to_string(controlID);
 									labelStack.push(lp);
 									attributes negOperand = unopCodeGenerator("!", $3);
