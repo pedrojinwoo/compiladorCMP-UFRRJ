@@ -1,15 +1,18 @@
 int I;
 I = 0;
+switch(I) {
+  case 0:
+    print(0);
+    break;
+  case 1:
+    print(1);
+    break;
+}
+
 while(I<5) {
+  print(2);
   I = I+1;
-  print(1);
-  while(I<5){
-    I = I+1;
-    print(2);
-    while(I<5) {
-      I = I+1;
-      print(3);
-      break all;
-    }
+  if(I==4){
+    break;
   }
 }

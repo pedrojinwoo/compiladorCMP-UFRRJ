@@ -31,6 +31,12 @@ struct labelPair
 	string stepLabel;
 	string endLabel;
 };
+struct switchCase
+{
+	string value;
+	string label;
+	string traducao;
+};
 
 // CLASSE PARA ESCOPO
 class Scope
@@ -60,6 +66,9 @@ string codigo_gerado;
 map<string, string> alias_types;
 static stack<labelPair> labelStack;
 stack<string> loopEndStack;
+vector<switchCase> switchCasesList;
+int switchID;
+int caseCounter = 0;
 Scope*current_scope = new Scope(nullptr);
 int yylex(void);
 void yyerror(string);
@@ -88,15 +97,15 @@ attributes ScanCodeGenerator(string op, attributes right);
 attributes breakCodeGenerator(int depth);
 %}
 
-%token TK_SEMICOLON TK_ALL
+%token TK_SEMICOLON TK_COLON
 %token TK_ID TK_NUM_INT TK_NUM_FLOAT TK_CHAR TK_BOOL TK_STRING
 %token TK_TYPE_INT TK_TYPE_FLOAT TK_TYPE_CHAR TK_TYPE_BOOL TK_TYPE_STRING
 %token TK_LPAREN TK_RPAREN TK_LBRACE TK_RBRACE
 %token TK_ASSIGN TK_EQ TK_NEQ TK_LT TK_GT TK_LEQ TK_GEQ
 %token TK_AND TK_OR TK_NOT
 %token TK_SCAN TK_PRINT
-%token TK_IF TK_ELSE TK_WHILE TK_FOR
-%token TK_BREAK
+%token TK_IF TK_ELSE TK_WHILE TK_FOR TK_SWITCH TK_CASE TK_DEFAULT
+%token TK_BREAK TK_ALL
 %nonassoc CAST_PREC
 
 %start S
@@ -337,7 +346,6 @@ ASSIGNCMD				: ASSIGNMENT TK_SEMICOLON
 CONTROL					: IF BLOCK ELSE 
 								{
 									labelPair lp = labelStack.top();
-									labelStack.pop();
 									if($3.traducao == "") {
 										$$.traducao =
 											$1.traducao +
@@ -356,17 +364,26 @@ CONTROL					: IF BLOCK ELSE
 											"\t" + lp.endLabel + ":\n"
 										;
 									}
+									labelStack.pop();
 								}
 								| WHILE BLOCK
 								{
 									labelPair lp = labelStack.top();
-									labelStack.pop();
 									$$.traducao =
 										$1.traducao +
 										$2.traducao +
 										"\tgoto " + lp.startLabel + ";\n" +
 										"\t" + lp.endLabel + ":\n"
 									;
+									cout << "[DEBUG] Entrou no CONTROL do WHILE. Tamanho atual do loopEndStack: " << loopEndStack.size() << endl;
+									if (loopEndStack.empty()) {
+                      cout << "[CRISE] loopEndStack já estava vazia ANTES do pop no CONTROL!" << endl;
+                  } else {
+                      string endLabel = loopEndStack.top();
+                      cout << "[DEBUG] Dando POP no label: " << endLabel << endl;
+                  }
+									labelStack.pop();
+									loopEndStack.pop();
 								}
 								| TK_FOR TK_LPAREN ASSIGNMENT TK_SEMICOLON LOGICAL TK_SEMICOLON  ASSIGNMENT TK_RPAREN BLOCK
 								{
@@ -384,10 +401,11 @@ CONTROL					: IF BLOCK ELSE
 									}
 									int controlID = genLabel();
 									labelPair lp;
-									lp.startLabel = "FORSTART_" + to_string(controlID);
-									lp.falseLabel = "";
-									lp.stepLabel = "FORSTEP_" + to_string(controlID);
-									lp.endLabel = "FOREND_" + to_string(controlID);
+										lp.startLabel = "FORSTART_" + to_string(controlID);
+										lp.falseLabel = "";
+										lp.stepLabel = "FORSTEP_" + to_string(controlID);
+										lp.endLabel = "FOREND_" + to_string(controlID);
+									labelStack.push(lp);
 									loopEndStack.push(lp.endLabel);
 									attributes negOperand = unopCodeGenerator("!", $5);
 									$$.traducao =
@@ -401,6 +419,36 @@ CONTROL					: IF BLOCK ELSE
 										"\tgoto " + lp.startLabel + ";\n" +
 										"\t" + lp.endLabel + ":\n"
 									;
+									labelStack.pop();
+									loopEndStack.pop();
+								}
+								| SWITCHHEADER TK_LBRACE CASELIST TK_RBRACE
+								{
+									string endLabel = loopEndStack.top();
+									$$.type = "void";
+									$$.label = "";
+									string switchGotos = $1.traducao;
+									string switchCases = "";
+									string defaultLabel = endLabel;
+									for (const auto& actualCase : switchCasesList) {
+										if(actualCase.value == "default") {
+											defaultLabel = actualCase.label;
+										} else {
+											string verifier = genAlias("int");
+											switchGotos += "\t" + verifier + " = " + $1.label + " == " + actualCase.value + ";\n";
+											switchGotos += "\tif(" + verifier + ") goto " + actualCase.label + ";\n";
+										}
+										switchCases += actualCase.traducao;
+									}
+									switchGotos += "\tgoto " + defaultLabel + ";\n";
+									$$.traducao =
+										switchGotos +
+										switchCases +
+										"\t" + endLabel + ":\n"
+									;
+									labelStack.pop();
+									loopEndStack.pop();
+									switchCasesList.clear();
 								}
 								;
 IF 							: TK_IF TK_LPAREN E TK_RPAREN
@@ -413,10 +461,10 @@ IF 							: TK_IF TK_LPAREN E TK_RPAREN
 									attributes negOperand = unopCodeGenerator("!", $3);
 									int controlID = genLabel();
 									labelPair lp;
-									lp.startLabel = "";
-									lp.falseLabel = "IFELSE_" + to_string(controlID);
-									lp.stepLabel = "";
-									lp.endLabel = "IFEND_" + to_string(controlID);
+										lp.startLabel = "";
+										lp.falseLabel = "IFELSE_" + to_string(controlID);
+										lp.stepLabel = "";
+										lp.endLabel = "IFEND_" + to_string(controlID);
 									labelStack.push(lp);
 									$$ = negOperand;
 								}
@@ -439,10 +487,10 @@ WHILE						: TK_WHILE TK_LPAREN E TK_RPAREN
 									}
 									int controlID = genLabel();
 									labelPair lp;
-									lp.startLabel = "WHILESTART_" + to_string(controlID);
-									lp.falseLabel = "";
-									lp.stepLabel = "";
-									lp.endLabel = "WHILEEND_" + to_string(controlID);
+										lp.startLabel = "WHILESTART_" + to_string(controlID);
+										lp.falseLabel = "";
+										lp.stepLabel = "";
+										lp.endLabel = "WHILEEND_" + to_string(controlID);
 									labelStack.push(lp);
 									loopEndStack.push(lp.endLabel);
 									attributes negOperand = unopCodeGenerator("!", $3);
@@ -453,6 +501,64 @@ WHILE						: TK_WHILE TK_LPAREN E TK_RPAREN
 									;
 								}
 								;
+SWITCHHEADER		: TK_SWITCH TK_LPAREN E TK_RPAREN
+								{
+									if($3.type == "error") {
+										errorReport("Erro Semantico: Expressão inválida no controle 'switch'!");
+										generalError = true;
+									}
+									switchID = genLabel();		
+									labelPair lp;
+										lp.startLabel = "";
+										lp.falseLabel = "";
+										lp.stepLabel = "";
+										lp.endLabel = "SWITCHEND_" + to_string(switchID);
+									labelStack.push(lp);
+									loopEndStack.push(lp.endLabel);
+									$$ = $3;
+
+								}
+								;
+CASELIST				: CASEELEMENT CASELIST
+								{
+									$$ = $2;
+								}
+								| CASEELEMENT
+								{
+									$$ = $1;
+								}
+								;
+CASEELEMENT		  : TK_CASE LITERAL TK_COLON CMDS
+								{
+									if($4.traducao.find("goto SWITCHEND_") == string::npos) {
+										errorReport("Erro Semantico: O uso de break é obrigatório no final de cada case!");
+										generalError = true;
+									}
+									switchCase c;
+										c.value = $2.label;
+										c.label = "CASE" + to_string(switchID) + "_" + to_string(caseCounter++);
+										c.traducao =
+											"\t" + c.label + ":\n" +
+											$4.traducao
+										;
+									switchCasesList.push_back(c);
+								}
+								| TK_DEFAULT TK_COLON CMDS
+								{
+									if($3.traducao.find("goto SWITCHEND_") == string::npos) {
+										errorReport("Erro Semantico: O uso de break é obrigatório no final de cada case!");
+										generalError = true;
+									}
+									switchCase c;
+										c.value = "default";
+										c.label = "DEFAULT" + to_string(switchID);
+										c.traducao =
+											"\t" + c.label + ":\n" +
+											$3.traducao
+										;
+									switchCasesList.push_back(c);
+								}
+								;	
 
 E								: LOGICAL
 								{

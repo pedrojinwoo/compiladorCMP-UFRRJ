@@ -43,6 +43,7 @@ STRING              \"{STRCONTENT}\"
 "!"                 { return TK_NOT; }
 
 ";"                 { return TK_SEMICOLON; }
+":"                 { return TK_COLON; }
 "all"               { return TK_ALL; }
 
 "int"               { return TK_TYPE_INT; }
@@ -60,6 +61,9 @@ STRING              \"{STRCONTENT}\"
 "else"              { return TK_ELSE; }
 "while"             { return TK_WHILE; }
 "for"               { return TK_FOR; }
+"switch"            { return TK_SWITCH; }
+"case"              { return TK_CASE; }
+"default"           { return TK_DEFAULT; }
 
 "EOF"               { yylval.label = "-1"; return TK_NUM_INT; }
 "true"              { yylval.label = "1"; return TK_BOOL; }
