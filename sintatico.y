@@ -24,12 +24,14 @@ struct symbol
 	string type;
 	variant<monostate, int, float, char, bool, string> value;
 };
+enum controlType {IF, WHILE, DO, FOR, SWITCH};
 struct labelPair
 {
 	string startLabel;
 	string falseLabel;
 	string stepLabel;
 	string endLabel;
+	controlType type;
 };
 struct switchCase
 {
@@ -65,7 +67,7 @@ bool generalError = false;
 bool stringScan = false;
 string codigo_gerado;
 map<string, string> alias_types;
-static stack<labelPair> labelStack;
+static vector<labelPair> labelStack;
 stack<string> loopEndStack;
 vector<switchCase> switchCasesList;
 stack<int> switchIdStack;
@@ -107,7 +109,7 @@ attributes breakCodeGenerator(int depth);
 %token TK_AND TK_OR TK_NOT
 %token TK_SCAN TK_PRINT
 %token TK_IF TK_ELSE TK_ELIF TK_WHILE TK_DO TK_FOR TK_SWITCH TK_CASE TK_DEFAULT
-%token TK_BREAK TK_ALL
+%token TK_BREAK TK_ALL TK_CONTINUE
 %nonassoc CAST_PREC
 
 %start S
@@ -249,6 +251,10 @@ CMD							: DECLARATION
 								{
 									$$.traducao = $1.traducao;
 								}
+								| CONTINUE
+								{
+									$$.traducao = $1.traducao;
+								}
 								;
 
 BLOCK						: TK_LBRACE {pushScope();} CMDS TK_RBRACE {popScope();}
@@ -259,8 +265,7 @@ BLOCK						: TK_LBRACE {pushScope();} CMDS TK_RBRACE {popScope();}
 BREAK						: TK_BREAK TK_SEMICOLON
 								{
 									if(loopEndStack.empty()) {
-										yyerror("Erro Semantico: 'break' fora de loop!");
-										$$.traducao = "";
+										errorReport("Erro Semantico: 'break' fora de loop!");
 										generalError = true;
 									} else {
 										string endLabel = loopEndStack.top();
@@ -277,6 +282,34 @@ BREAK						: TK_BREAK TK_SEMICOLON
 									$$ = breakCodeGenerator(-1);
 								}
 								;
+
+CONTINUE				: TK_CONTINUE TK_SEMICOLON
+								{
+									if(labelStack.empty()) {
+										errorReport("Erro Semantico: 'continue' fora de loop!");
+										generalError = true;
+									}
+									bool validContinue = false;
+									labelPair lp;
+									for(int i=labelStack.size()-1; i>=0; i--) {
+										if(labelStack[i].type == WHILE || labelStack[i].type == DO || labelStack[i].type == FOR) {
+											lp = labelStack[i];
+											validContinue = true;
+											break;
+										}
+									}
+									if(!validContinue) {
+										errorReport("Erro Semântico: 'continue' deve estar dentro de um laço de repetição!");
+										generalError = true;
+									} else {
+										if(lp.type==FOR) {
+											$$.traducao = "\tgoto " + lp.stepLabel + ";\n";
+										} else {
+											$$.traducao = "\tgoto " + lp.startLabel + ";\n";
+										}
+									}
+								}
+									;
 
 DECLARATION			: TK_TYPE_INT TK_ID TK_SEMICOLON
 								{
@@ -308,9 +341,8 @@ DECLARATION			: TK_TYPE_INT TK_ID TK_SEMICOLON
 ASSIGNMENT			: TK_ID TK_ASSIGN E
 								{
 									if(!current_scope->lookup($1.label)) {
-										yyerror("Erro Semantico: Variavel '" + $1.label + "' nao declarada!");
-        								$$.traducao = "";
-												generalError = true;
+										errorReport("Erro Semantico: Variavel '" + $1.label + "' nao declarada!");
+										generalError = true;
 									} else {
 										if($3.type != "error") {
 											symbol* s = current_scope->lookup($1.label);
@@ -328,8 +360,7 @@ ASSIGNMENT			: TK_ID TK_ASSIGN E
 													;
 												}
 											} else {
-												yyerror("Erro Semantico: Tipos incompativeis! '" + $1.label + "' e " + s->type + " mas recebeu " + $3.type);
-												$$.traducao = $3.traducao;
+											errorReport("Erro Semantico: Tipos incompativeis! '" + $1.label + "' e " + s->type + " mas recebeu " + $3.type);
 												generalError = true;
 											}
 										} else {
@@ -347,7 +378,7 @@ ASSIGNCMD				: ASSIGNMENT TK_SEMICOLON
 
 CONTROL					: IF BLOCK ELIF ELSE 
 								{
-									labelPair lp = labelStack.top();
+									labelPair lp = labelStack.back();
 									if($3.traducao == "" && $4.traducao == "") {
 										$$.traducao =
 											$1.traducao +
@@ -367,7 +398,7 @@ CONTROL					: IF BLOCK ELIF ELSE
 											"\t" + lp.endLabel + ":\n"
 										;
 									}
-									labelStack.pop();
+									labelStack.pop_back();
 								}
 								| WHILE BLOCK
 								{
@@ -379,14 +410,13 @@ CONTROL					: IF BLOCK ELIF ELSE
 										"\tgoto " + startLabel + ";\n" +
 										"\t" + endLabel + ":\n"
 									;
-									labelStack.pop();
+									labelStack.pop_back();
 									loopEndStack.pop();
 								}
 								| DO BLOCK TK_WHILE TK_LPAREN E TK_RPAREN TK_SEMICOLON
 								{
 									if($5.type != "bool") {
-										yyerror("Erro Semantico: Condição de 'do-while' deve ser do tipo booleano!");
-										$$.traducao = $3.traducao + $5.traducao;
+										errorReport("Erro Semantico: Condição de 'do-while' deve ser do tipo booleano!");
 										generalError = true;
 									}
 									string startLabel = "DOWHILESTART_" + $1.label;
@@ -404,15 +434,11 @@ CONTROL					: IF BLOCK ELIF ELSE
 								| FOR TK_LPAREN ASSIGNMENT TK_SEMICOLON LOGICAL TK_SEMICOLON  ASSIGNMENT TK_RPAREN BLOCK
 								{
 									if($3.traducao == "" || $5.traducao == "" || $7.traducao == "") {
-										yyerror("Erro Semantico: Expressão inválida no controle 'for'!");
-										$$.traducao = "";
-										$$.type = "error";
+										errorReport("Erro Semantico: Expressão inválida no controle 'for'!");
 										generalError = true;
 									}
 									if($5.type != "bool") {
-										yyerror("Erro Semantico: Condição de 'for' deve ser do tipo booleano!");
-										$$.traducao = "";
-										$$.type = "error";
+										errorReport("Erro Semantico: Condição de 'for' deve ser do tipo booleano!");
 										generalError = true;
 									}
 									string startLabel = "FORSTART_" + $1.label;
@@ -430,7 +456,7 @@ CONTROL					: IF BLOCK ELIF ELSE
 										"\tgoto " + startLabel + ";\n" +
 										"\t" + endLabel + ":\n"
 									;
-									labelStack.pop();
+									labelStack.pop_back();
 									loopEndStack.pop();
 								}
 								| SWITCH TK_LBRACE CASELIST TK_RBRACE
@@ -459,15 +485,14 @@ CONTROL					: IF BLOCK ELIF ELSE
 									switchCasesList = casesLeft;
 									switchIdStack.pop();
                   //switchCasesList.clear();
-                  labelStack.pop();
+                  labelStack.pop_back();
                   loopEndStack.pop();
 								}
 								;
 IF 							: TK_IF TK_LPAREN E TK_RPAREN
 								{
 									if($3.type != "bool") {
-										yyerror("Erro Semantico: Condição de 'if' deve ser do tipo booleano!");
-										$$.traducao = $3.traducao;
+										errorReport("Erro Semantico: Condição de 'if' deve ser do tipo booleano!");
 										generalError = true;
 									}
 									attributes negOperand = unopCodeGenerator("!", $3);
@@ -477,7 +502,8 @@ IF 							: TK_IF TK_LPAREN E TK_RPAREN
 										lp.falseLabel = "IFELSE_" + to_string(controlID);
 										lp.stepLabel = "";
 										lp.endLabel = "IFEND_" + to_string(controlID);
-									labelStack.push(lp);
+										lp.type = IF;
+									labelStack.push_back(lp);
 									$$ = negOperand;
 								}
 								;
@@ -493,13 +519,12 @@ ELIF						: ELIFELEMENT ELIF
 ELIFELEMENT			: TK_ELIF TK_LPAREN E TK_RPAREN BLOCK
 								{
 									if($3.type != "bool") {
-										yyerror("Erro Semantico: Condição de 'elif' deve ser do tipo booleano!");
-										$$.traducao = $3.traducao;
+										errorReport("Erro Semantico: Condição de 'elif' deve ser do tipo booleano!");
 										generalError = true;
 									}
 									attributes negOperand = unopCodeGenerator("!", $3);
-									string refId = labelStack.top().falseLabel.substr(7);
-									string genEndLabel = labelStack.top().endLabel;
+									string refId = labelStack.back().falseLabel.substr(7);
+									string genEndLabel = labelStack.back().endLabel;
 									string elifLabel = "ELIF" + refId + "_" + to_string(elifCounter++);
 									$$.traducao = 
 										negOperand.traducao +
@@ -522,8 +547,7 @@ ELSE						: TK_ELSE BLOCK
 WHILE						: TK_WHILE TK_LPAREN E TK_RPAREN
 								{
 									if($3.type != "bool") {
-										yyerror("Erro Semantico: Condição de 'while' deve ser do tipo booleano!");
-										$$.traducao = $3.traducao;
+										errorReport("Erro Semantico: Condição de 'while' deve ser do tipo booleano!");
 										generalError = true;
 									}
 									int controlID = genLabel();
@@ -532,7 +556,8 @@ WHILE						: TK_WHILE TK_LPAREN E TK_RPAREN
 										lp.falseLabel = "";
 										lp.stepLabel = "";
 										lp.endLabel = "WHILEEND_" + to_string(controlID);
-									labelStack.push(lp);
+										lp.type = WHILE;
+									labelStack.push_back(lp);
 									loopEndStack.push(lp.endLabel);
 									attributes negOperand = unopCodeGenerator("!", $3);
 									$$.label = to_string(controlID);
@@ -551,7 +576,8 @@ DO 							: TK_DO
 										lp.falseLabel = "";
 										lp.stepLabel = "";
 										lp.endLabel = "DOWHILEEND_" + to_string(controlID);
-									labelStack.push(lp);
+										lp.type = DO;
+									labelStack.push_back(lp);
 									loopEndStack.push(lp.endLabel);
 									$$.label = to_string(controlID);
 									$$.traducao = "\t" + lp.startLabel + ":\n";
@@ -565,7 +591,8 @@ FOR							: TK_FOR
 										lp.falseLabel = "";
 										lp.stepLabel = "FORSTEP_" + to_string(controlID);
 										lp.endLabel = "FOREND_" + to_string(controlID);
-									labelStack.push(lp);
+										lp.type = FOR;
+									labelStack.push_back(lp);
 									loopEndStack.push(lp.endLabel);
 									$$.label = to_string(controlID);
 								}
@@ -584,7 +611,8 @@ SWITCH		: TK_SWITCH TK_LPAREN E TK_RPAREN
                     lp.falseLabel = "";
                     lp.stepLabel = "";
                     lp.endLabel = endLabel;
-                  labelStack.push(lp);
+										lp.type = SWITCH;
+                  labelStack.push_back(lp);
                   loopEndStack.push(endLabel);
                   $$.label = $3.label; 
                   $$.traducao = $3.traducao;

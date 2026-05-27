@@ -56,6 +56,7 @@ STRING              \"{STRCONTENT}\"
 "print"             { return TK_PRINT; }
 
 "break"             { return TK_BREAK; }
+"continue"          { return TK_CONTINUE; }
 
 "if"                { return TK_IF; }
 "else"              { return TK_ELSE; }

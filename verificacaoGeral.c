@@ -21,54 +21,32 @@ int main() {
         int _t14;
         int _t15;
         int _t16;
-        int _t17;
-        int _t18;
 
         _t2 = 0;
         _t1 = _t2;
-        _t3 = 0;
-        _t8 = _t1 == _t3;
-        if(_t8) goto CASE1_0;
+        FORSTART_1:
+        _t3 = 5;
+        _t4 = _t1 < _t3;
+        _t16 = !_t4;
+        if(_t16) goto FOREND_1;
+        _t7 = 1;
+        _t8 = _t1 == _t7;
+        _t9 = 3;
+        _t10 = _t1 == _t9;
+        _t11 = _t8 || _t10;
+        _t12 = 5;
+        _t13 = _t1 == _t12;
+        _t14 = _t11 || _t13;
+        _t15 = !_t14;
+        if(_t15) goto IFEND_2;
+        goto FORSTEP_1;
+        IFEND_2:
+        printf("%d\n", _t1);
+        FORSTEP_1:
         _t5 = 1;
-        _t9 = _t1 == _t5;
-        if(_t9) goto CASE1_1;
-        _t10 = _t1 == 0;
-        if(_t10) goto DEFAULT_1;
-        goto SWITCHEND_1;
-        CASE1_0:
-        _t4 = 0;
-        printf("%d\n", _t4);
-        goto SWITCHEND_1;
-        CASE1_1:
-        _t6 = 1;
-        printf("%d\n", _t6);
-        goto SWITCHEND_1;
-        DEFAULT_1:
-        _t7 = 2;
-        printf("%d\n", _t7);
-        goto SWITCHEND_1;
-        SWITCHEND_1:
-        _t11 = 0;
-        _t16 = _t1 == _t11;
-        if(_t16) goto CASE2_2;
-        _t13 = 1;
-        _t17 = _t1 == _t13;
-        if(_t17) goto CASE2_3;
-        _t18 = _t1 == 0;
-        if(_t18) goto DEFAULT_2;
-        goto SWITCHEND_2;
-        CASE2_2:
-        _t12 = 0;
-        printf("%d\n", _t12);
-        goto SWITCHEND_2;
-        CASE2_3:
-        _t14 = 1;
-        printf("%d\n", _t14);
-        goto SWITCHEND_2;
-        DEFAULT_2:
-        _t15 = 2;
-        printf("%d\n", _t15);
-        goto SWITCHEND_2;
-        SWITCHEND_2:
+        _t6 = _t1 + _t5;
+        _t1 = _t6;
+        goto FORSTART_1;
+        FOREND_1:
         return 0;
 }
