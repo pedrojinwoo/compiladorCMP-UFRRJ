@@ -106,7 +106,7 @@ attributes breakCodeGenerator(int depth);
 %token TK_ASSIGN TK_EQ TK_NEQ TK_LT TK_GT TK_LEQ TK_GEQ
 %token TK_AND TK_OR TK_NOT
 %token TK_SCAN TK_PRINT
-%token TK_IF TK_ELSE TK_ELIF TK_WHILE TK_FOR TK_SWITCH TK_CASE TK_DEFAULT
+%token TK_IF TK_ELSE TK_ELIF TK_WHILE TK_DO TK_FOR TK_SWITCH TK_CASE TK_DEFAULT
 %token TK_BREAK TK_ALL
 %nonassoc CAST_PREC
 
@@ -371,24 +371,37 @@ CONTROL					: IF BLOCK ELIF ELSE
 								}
 								| WHILE BLOCK
 								{
-									labelPair lp = labelStack.top();
+									string startLabel = "WHILESTART_" + $1.label;
+									string endLabel = "WHILEEND_" + $1.label;
 									$$.traducao =
 										$1.traducao +
 										$2.traducao +
-										"\tgoto " + lp.startLabel + ";\n" +
-										"\t" + lp.endLabel + ":\n"
+										"\tgoto " + startLabel + ";\n" +
+										"\t" + endLabel + ":\n"
 									;
-									cout << "[DEBUG] Entrou no CONTROL do WHILE. Tamanho atual do loopEndStack: " << loopEndStack.size() << endl;
-									if (loopEndStack.empty()) {
-                      cout << "[CRISE] loopEndStack já estava vazia ANTES do pop no CONTROL!" << endl;
-                  } else {
-                      string endLabel = loopEndStack.top();
-                      cout << "[DEBUG] Dando POP no label: " << endLabel << endl;
-                  }
 									labelStack.pop();
 									loopEndStack.pop();
 								}
-								| TK_FOR TK_LPAREN ASSIGNMENT TK_SEMICOLON LOGICAL TK_SEMICOLON  ASSIGNMENT TK_RPAREN BLOCK
+								| DO BLOCK TK_WHILE TK_LPAREN E TK_RPAREN TK_SEMICOLON
+								{
+									if($5.type != "bool") {
+										yyerror("Erro Semantico: Condição de 'do-while' deve ser do tipo booleano!");
+										$$.traducao = $3.traducao + $5.traducao;
+										generalError = true;
+									}
+									string startLabel = "DOWHILESTART_" + $1.label;
+									string endLabel = "DOWHILEEND_" + $1.label;
+									attributes negOperand = unopCodeGenerator("!", $5);
+									$$.traducao =
+										$1.traducao +
+										$2.traducao +
+										negOperand.traducao +
+										"\tif(" + negOperand.label + ") goto " + endLabel + ";\n" +
+										"\tgoto " + startLabel + ";\n" +
+										"\t" + endLabel + ":\n"
+									;
+								}
+								| FOR TK_LPAREN ASSIGNMENT TK_SEMICOLON LOGICAL TK_SEMICOLON  ASSIGNMENT TK_RPAREN BLOCK
 								{
 									if($3.traducao == "" || $5.traducao == "" || $7.traducao == "") {
 										yyerror("Erro Semantico: Expressão inválida no controle 'for'!");
@@ -402,30 +415,25 @@ CONTROL					: IF BLOCK ELIF ELSE
 										$$.type = "error";
 										generalError = true;
 									}
-									int controlID = genLabel();
-									labelPair lp;
-										lp.startLabel = "FORSTART_" + to_string(controlID);
-										lp.falseLabel = "";
-										lp.stepLabel = "FORSTEP_" + to_string(controlID);
-										lp.endLabel = "FOREND_" + to_string(controlID);
-									labelStack.push(lp);
-									loopEndStack.push(lp.endLabel);
+									string startLabel = "FORSTART_" + $1.label;
+									string stepLabel = "FORSTEP_" + $1.label;
+									string endLabel = "FOREND_" + $1.label;
 									attributes negOperand = unopCodeGenerator("!", $5);
 									$$.traducao =
 										$3.traducao +
-										"\t" + lp.startLabel + ":\n" +
+										"\t" + startLabel + ":\n" +
 										negOperand.traducao +
-										"\tif(" + negOperand.label + ") goto " + lp.endLabel + ";\n" +
+										"\tif(" + negOperand.label + ") goto " + endLabel + ";\n" +
 										$9.traducao +
-										"\t" + lp.stepLabel + ":\n" +
+										"\t" + stepLabel + ":\n" +
 										$7.traducao +
-										"\tgoto " + lp.startLabel + ";\n" +
-										"\t" + lp.endLabel + ":\n"
+										"\tgoto " + startLabel + ";\n" +
+										"\t" + endLabel + ":\n"
 									;
 									labelStack.pop();
 									loopEndStack.pop();
 								}
-								| SWITCHHEADER TK_LBRACE CASELIST TK_RBRACE
+								| SWITCH TK_LBRACE CASELIST TK_RBRACE
 								{
 									string endLabel = loopEndStack.top();
 									int actualId = switchIdStack.top();
@@ -527,6 +535,7 @@ WHILE						: TK_WHILE TK_LPAREN E TK_RPAREN
 									labelStack.push(lp);
 									loopEndStack.push(lp.endLabel);
 									attributes negOperand = unopCodeGenerator("!", $3);
+									$$.label = to_string(controlID);
 									$$.traducao =
 										"\t" + lp.startLabel + ":\n" +
 										negOperand.traducao +
@@ -534,7 +543,34 @@ WHILE						: TK_WHILE TK_LPAREN E TK_RPAREN
 									;
 								}
 								;
-SWITCHHEADER		: TK_SWITCH TK_LPAREN E TK_RPAREN
+DO 							: TK_DO	
+								{
+									int controlID = genLabel();
+									labelPair lp;
+										lp.startLabel = "DOWHILESTART_" + to_string(controlID);
+										lp.falseLabel = "";
+										lp.stepLabel = "";
+										lp.endLabel = "DOWHILEEND_" + to_string(controlID);
+									labelStack.push(lp);
+									loopEndStack.push(lp.endLabel);
+									$$.label = to_string(controlID);
+									$$.traducao = "\t" + lp.startLabel + ":\n";
+								}
+								;
+FOR							: TK_FOR
+								{
+									int controlID = genLabel();
+									labelPair lp;
+										lp.startLabel = "FORSTART_" + to_string(controlID);
+										lp.falseLabel = "";
+										lp.stepLabel = "FORSTEP_" + to_string(controlID);
+										lp.endLabel = "FOREND_" + to_string(controlID);
+									labelStack.push(lp);
+									loopEndStack.push(lp.endLabel);
+									$$.label = to_string(controlID);
+								}
+								;
+SWITCH		: TK_SWITCH TK_LPAREN E TK_RPAREN
 								{
 									if($3.type == "error") {
                     errorReport("Erro Semantico: Expressão inválida no 'switch'!");

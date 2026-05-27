@@ -23,48 +23,52 @@ int main() {
         int _t16;
         int _t17;
         int _t18;
-        int _t19;
-        int _t20;
 
-        _t2 = 1;
+        _t2 = 0;
         _t1 = _t2;
         _t3 = 0;
-        _t4 = _t1 == _t3;
-        _t5 = !_t4;
-        if(_t5) goto IFELSE_1;
-        _t6 = 0;
+        _t8 = _t1 == _t3;
+        if(_t8) goto CASE1_0;
+        _t5 = 1;
+        _t9 = _t1 == _t5;
+        if(_t9) goto CASE1_1;
+        _t10 = _t1 == 0;
+        if(_t10) goto DEFAULT_1;
+        goto SWITCHEND_1;
+        CASE1_0:
+        _t4 = 0;
+        printf("%d\n", _t4);
+        goto SWITCHEND_1;
+        CASE1_1:
+        _t6 = 1;
         printf("%d\n", _t6);
-        goto IFEND_1;
-        IFELSE_1:
-        _t7 = 1;
-        _t8 = _t1 == _t7;
-        _t19 = !_t8;
-        if(_t19) goto ELIF1_1;
-        _t9 = 1;
-        printf("%d\n", _t9);
-        _t10 = 0;
-        _t11 = _t1 == _t10;
-        _t12 = !_t11;
-        if(_t12) goto IFELSE_2;
-        _t13 = 0;
-        printf("%d\n", _t13);
-        goto IFEND_2;
-        IFELSE_2:
+        goto SWITCHEND_1;
+        DEFAULT_1:
+        _t7 = 2;
+        printf("%d\n", _t7);
+        goto SWITCHEND_1;
+        SWITCHEND_1:
+        _t11 = 0;
+        _t16 = _t1 == _t11;
+        if(_t16) goto CASE2_2;
+        _t13 = 1;
+        _t17 = _t1 == _t13;
+        if(_t17) goto CASE2_3;
+        _t18 = _t1 == 0;
+        if(_t18) goto DEFAULT_2;
+        goto SWITCHEND_2;
+        CASE2_2:
+        _t12 = 0;
+        printf("%d\n", _t12);
+        goto SWITCHEND_2;
+        CASE2_3:
         _t14 = 1;
-        _t15 = _t1 == _t14;
-        _t17 = !_t15;
-        if(_t17) goto ELIF2_0;
-        _t16 = 1;
-        printf("%d\n", _t16);
-        goto IFEND_2;
-        ELIF2_0:
-        _t18 = 2;
-        printf("%d\n", _t18);
-        IFEND_2:
-        goto IFEND_1;
-        ELIF1_1:
-        _t20 = 2;
-        printf("%d\n", _t20);
-        IFEND_1:
+        printf("%d\n", _t14);
+        goto SWITCHEND_2;
+        DEFAULT_2:
+        _t15 = 2;
+        printf("%d\n", _t15);
+        goto SWITCHEND_2;
+        SWITCHEND_2:
         return 0;
 }
