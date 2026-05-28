@@ -25,24 +25,36 @@ translate: glf
 #		./glf < $(FILE) # (PARA LINUX/MAC)
 
 .SILENT:
-run: glf
-		@
-			glf < testeGeral.viper > output.c && \
-			type output.c && \
-			echo. && \
-			gcc output.c -o exec.exe && \
-			exec.exe && \
-			del /f /q output.c exec.exe && \
-			echo. && \
-			echo. && \
-			echo.  \
+winRun: glf
+	@
+		glf < testeGeral.viper > output.c && \
+		type output.c && \
+		echo. && \
+		gcc output.c -o exec.exe && \
+		exec.exe && \
+		del /f /q output.c exec.exe && \
+		echo. && \
+		echo. && \
+		echo.  \
+
+.SILENT:
+linuxRun: glf
+	glf < testeGeral.viper > output.c
+	cat output.c
+	echo ""
+	gcc output.c -o exec.exe
+	./exec.exe
+	rm -f output.c exec.exe
+	echo ""
+	echo ""
+	echo ""
 
 ifndef DIR
-extra:
+winExtra:
 	$(ERROR Erro: Pasta necessária)
 else
 FILES_TO_RUN := $(wildcard $(DIR)/*.viper)
-extra: glf
+winExtra: glf
 	@$(foreach f,$(FILES_TO_RUN), \
 		echo "$(f)" && \
 		glf < $(f) > output.c && \
@@ -56,6 +68,25 @@ extra: glf
 		echo.  \
 	)
 endif
+
+ifndef DIR
+linuxExtra:
+	$(ERROR erro: Pasta necessária)
+else
+FILES_TO_RUN := $(wildcard $(DIR)/*.viper)
+linuxExtra: glf
+	for f in $(FILES_TO_RUN); do \
+		echo "$$f" ; \
+		glf < $$f > output.c ; \
+		cat output.c ; \
+		echo "" ; \
+		gcc output.c -o exec.exe ; \
+		./exec.exe ; \
+		rm -f output.c exec.exe ; \
+		echo "" ; \
+		echo "" ; \
+		echo "" ; \
+	done
 
 clean:
 	del /f /q y.tab.c y.tab.h lex.yy.c glf.exe
