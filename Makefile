@@ -27,42 +27,27 @@ translate: glf
 run: glf
 		./glf < $(FILE) > /tmp/foca_output.c && gcc /tmp/foca_output.c -o /tmp/foca_output && /tmp/foca_output
 
-test: glf
-	@pass=0; fail=0; \
-	for f in exemplos/*.foca; do \
-		name=$$(basename $$f .foca); \
-		expected="exemplos/$$name.expected"; \
-		if [ -f "$$expected" ]; then \
-			if ./glf < $$f 2>/dev/null | diff -q - $$expected > /dev/null 2>&1; then \
-				echo "  PASS: $$name"; \
-				pass=$$((pass + 1)); \
-			else \
-				echo "  FAIL: $$name"; \
-				fail=$$((fail + 1)); \
-			fi; \
-		fi; \
-	done; \
-	echo ""; \
-	echo "Resultado: $$pass passou, $$fail falhou"
 
-test-%: glf
-	@name=$(patsubst test-%,%,$@); \
-	foca=$$(ls exemplos/$${name}_*.foca 2>/dev/null | head -1); \
-	if [ -z "$$foca" ]; then \
-		echo "Exemplo nao encontrado para etapa $$name"; \
-		exit 1; \
-	fi; \
-	expected=$$(echo $$foca | sed 's/.foca/.expected/'); \
-	echo "Entrada: $$foca"; \
-	echo "---"; \
-	./glf < $$foca; \
-	echo "---"; \
-	if diff <(./glf < $$foca 2>/dev/null) $$expected > /dev/null 2>&1; then \
-		echo "PASS"; \
-	else \
-		echo "FAIL - Diferenca:"; \
-		diff <(./glf < $$foca 2>/dev/null) $$expected; \
-	fi
+ifndef DIR
+extra:
+	$(ERROR Erro: Pasta necessária)
+else
+FILES_TO_RUN := $(wildcard $(DIR)/*.viper)
+
+extra: glf
+	@$(foreach f,$(FILES_TO_RUN), \
+		echo "$(f)" && \
+		glf < $(f) > output.c && \
+		type output.c && \
+		echo . && \
+		gcc output.c -o exec.exe && \
+		exec.exe && \
+		del /f /q output.c exec.exe && \
+		echo . && \
+		echo . && \
+		echo .  \
+	)
+endif
 
 clean:
-	rm -f y.tab.c y.tab.h lex.yy.c glf
+	@$ del /f /q y.tab.c y.tab.h lex.yy.c glf.exe
